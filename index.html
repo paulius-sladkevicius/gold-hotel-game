@@ -50,7 +50,9 @@
      ten (koridoriumi, pro duris, aplink stalą); veiksmai — dideliais
      mygtukais po lauku. Gulsčiai telefone laukas per visą aukštį, mygtukai
      dešinėje. Pinigai ir kambariai rodomi ir pačiame lauke (viršuje).
-  10. Testavimui: atidarius su ?debug (pvz. index.html?debug) klavišas M
+  10. Apsauga nuo netyčinio išėjimo: uždarant / perkraunant puslapį naršyklė
+      paklausia; mygtukas „Atgal“ sustabdo žaidimą ir klausia „Ar tikrai išeiti?“.
+  11. Testavimui: atidarius su ?debug (pvz. index.html?debug) klavišas M
      prideda pinigų. Konsolėje pasiekiama window.GoldHotel.
 
   VALDYMAS: ← / → — vaikščioti; ↑ / ↓ lifte — kitas aukštas; Tarpas — skanuoti;
@@ -223,6 +225,14 @@
         <h2>Inspektorius atvyko!</h2>
         <p id="inspText"></p>
         <p><button id="btnFly" style="font-size:18px">Skristi</button></p>
+      </div>
+    </div>
+
+    <div class="overlay" id="ovExit">
+      <div class="dialog center">
+        <h2>Ar tikrai nori išeiti?</h2>
+        <p id="exitText">Žaidimas sustabdytas. Išėjus žaidimo eiga dings.</p>
+        <p><button class="green" id="btnStay" style="font-size:18px">Likti žaidime</button> <button class="red" id="btnLeave" style="font-size:18px">Išeiti</button></p>
       </div>
     </div>
 
@@ -1058,7 +1068,7 @@ function updateEffects(dt) {
    Tobulinimai, inspektorius, pasaulio keitimas, pralaimėjimas
    ======================================================================= */
 const $ = id => document.getElementById(id);
-function hideAll() { ['ovTitle', 'ovShop', 'ovInspector', 'ovOver'].forEach(id => $(id).classList.remove('show')); }
+function hideAll() { ['ovTitle', 'ovShop', 'ovInspector', 'ovOver', 'ovExit'].forEach(id => $(id).classList.remove('show')); }
 function openShop() { S.mode = 'shop'; renderShop(); $('ovShop').classList.add('show'); }
 function closeShop() { if (S.mode !== 'shop') return; $('ovShop').classList.remove('show'); S.mode = 'play'; dirtyPanel = true; }
 function roomCost() { return Math.round((bal().newRoomCost + bal().newRoomStep * Math.max(0, S.rooms.length - BLD.startRooms)) * lapMult()); }
@@ -1814,7 +1824,7 @@ window.addEventListener('keydown', e => {
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Enter'].includes(e.code)) e.preventDefault();
   // kad sufokusuotas mygtukas nesuveiktų antrą kartą nuo Tarpo/Enter
   if (document.activeElement && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();
-  if (e.code === 'Escape') { if (S.mode === 'shop') closeShop(); return; }
+  if (e.code === 'Escape') { if (S.mode === 'shop') closeShop(); else if (S.mode === 'exitAsk') stayInGame(); return; }
   if (S.mode === 'title' && (e.code === 'Enter' || e.code === 'Space')) { startGame(); return; }
   if (S.mode === 'inspector' && S.insp && S.insp.arrived && (e.code === 'Enter' || e.code === 'Space')) { fly(); return; }
   if (S.mode === 'gameover' && e.code === 'Enter') { retry(); return; }
@@ -1845,8 +1855,49 @@ $('btnShopX').addEventListener('click', closeShop);
 $('btnStart').addEventListener('click', () => startGame());
 $('btnFly').addEventListener('click', () => fly());
 $('btnRetry').addEventListener('click', () => retry());
+$('btnStay').addEventListener('click', () => stayInGame());
+$('btnLeave').addEventListener('click', () => leaveGame());
 
-function startGame() { if (S.mode !== 'title') return; sfx('coin'); loadWorld(0); }
+function startGame() { if (S.mode !== 'title') return; sfx('coin'); loadWorld(0); guardBack(); }
+
+/* =======================================================================
+   Apsauga nuo netyčinio išėjimo
+   1) Uždarant skirtuką / perkraunant — naršyklė paklausia (beforeunload).
+   2) Mygtukas „Atgal“ (ir braukimas telefone) — žaidimas sustoja ir klausia.
+   ======================================================================= */
+const gameInProgress = () => S.mode !== 'title' && !S.leaving;
+window.addEventListener('beforeunload', e => {
+  if (!gameInProgress()) return;
+  e.preventDefault();
+  e.returnValue = ''; // naršyklė parodys savo „Ar tikrai išeiti?“ langą
+  return '';
+});
+function guardBack() {
+  if (S.backGuarded) return;
+  try { history.pushState({ goldHotel: true }, ''); S.backGuarded = true; } catch (e) { /* file:// kai kuriose naršyklėse */ }
+}
+window.addEventListener('popstate', () => {
+  if (!S.backGuarded || !gameInProgress()) return;
+  S.backGuarded = false;
+  if (S.mode === 'exitAsk') return;
+  S.modeBeforeExit = S.mode; S.mode = 'exitAsk'; S.keys = {};
+  $('exitText').textContent = 'Žaidimas sustabdytas. Išėjus žaidimo eiga dings.';
+  $('ovExit').classList.add('show');
+  dirtyPanel = true;
+});
+function stayInGame() {
+  if (S.mode !== 'exitAsk') return;
+  $('ovExit').classList.remove('show');
+  S.mode = S.modeBeforeExit || 'play';
+  guardBack();
+  dirtyPanel = true;
+}
+function leaveGame() {
+  S.leaving = true;
+  history.back();
+  // jei nėra kur grįžti (failas atidarytas tiesiogiai) — lieka tik uždaryti skirtuką
+  setTimeout(() => { $('exitText').textContent = 'Gali uždaryti naršyklės skirtuką. Arba spausk „Likti žaidime“.'; S.leaving = false; }, 700);
+}
 function retry() { if (S.mode !== 'gameover') return; loadWorld(S.worldIndex); log('Bandome dar kartą!'); }
 
 /* =======================================================================
