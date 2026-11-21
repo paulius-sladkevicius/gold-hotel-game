@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gold Hotel</title>
+<!--
+==========================================================================
+  GOLD HOTEL — pirmoji veikianti versija (v0.1)
+  Vienas failas: HTML + CSS + JS (Canvas). Jokių išorinių bibliotekų,
+  paveikslėlių ar serverio — tiesiog atidaryk failą naršyklėje.
+
+  SPRENDIMAI, KURIŲ SCENARIJUJE NĖRA (pasirinktas paprasčiausias variantas):
+  1. Pagrindinis veikėjas — viešbučio savininkas: auksinis „pupelės“ formos
+     žmogeliukas su juodu cilindru ir raudonu peteliške (stilius kaip Among Us).
+  2. Dienų nėra. Laikas bėga nepertraukiamai, svečiai atvyksta vienas po kito
+     kas kelias sekundes (intervalas — CONFIG.worlds[].balance.spawnInterval).
+     Svečias sumoka iš karto įsiregistravęs, pagyvena ir išvyksta.
+  3. Policija kviečiama mygtuku „Kviesti policiją“ arba klavišu P.
+     Ji suima tą svečią, kuris šalia tavęs: prie registratūros stalo, tame
+     kambaryje, kuriame stovi, arba bėgantį blogiuką netoliese.
+     Teisingai — gauni atlygį; suėmei nekaltą — moki baudą.
+  4. Pasiūlymai iš scenarijaus priimti: juokingi daiktai (guminė antis,
+     dinamitas bagete, katinas lagamine), nekalti, bet įtartini svečiai
+     (močiutės mezgimo virbalai skeneriui atrodo įtartinai), taurės lentynoje,
+     ir „gražesnis viešbutis pritraukia daugiau blogiukų“.
+  5. Keturi blogiuko ženklai:
+     • Laikraštis — šoniniame skydelyje aprašomas ieškomas blogiukas
+       (kuo geresnis laikraštis, tuo daugiau požymių).
+     • Skeneris — prie stalo (Tarpas) parodo lagamino daiktus; senas skeneris
+       dalį paslėptų daiktų praleidžia.
+     • Keista išvaizda/elgesys — kaukės, tamsūs akiniai, kyšantis dinamitas;
+       kambaryje blogiukas nervingai trypčioja, „hehe“, padeda bombą.
+     • Įvykiai — tiksėjimas už durų, sprogimas, ir blogiukas piktu veidu bėga
+       lauk; jį dar galima pagauti (P).
+  6. Kambariai uždari (tamsūs): matai vidų tik užėjęs vidun / stovėdamas
+     tarpduryje. Žiūronai leidžia matyti iš koridoriaus, kameros — visur.
+  7. Tobulinimai: 3 viešbučio + 3 saugumo, po 2 lygius (iš viso 12).
+     Nupirkus viską atvyksta inspektorius su taure, ir prasideda kitas
+     pasaulis nuo 0 pinigų. Po paskutinio pasaulio ratas kartojasi sunkiau.
+  8. Pradedama su 0 pinigų (CONFIG.startMoney).
+  9. Testavimui: atidarius su ?debug (pvz. index.html?debug) klavišas M
+     prideda pinigų. Konsolėje pasiekiama window.GoldHotel.
+
+  VALDYMAS: rodyklės / WASD — vaikščioti; Tarpas — skanuoti; E — įleisti;
+  X — neįleisti; P — policija; R — atstatyti kambarį; U — tobulinimai;
+  Esc — uždaryti langą.
+
+  NAUJAS PASAULIS: pridėk įrašą į CONFIG.worlds (žr. „afrika“ kaip pavyzdį).
+  Daiktų „kind“ turi turėti piešimo funkciją drawItem(), kitaip piešiamas
+  apskritimas su raide.
+==========================================================================
+-->
+<style>
+  :root {
+    --bg: #2b1d3a; --panel: #3b2850; --panel2: #4a3363; --ink: #fff7e6;
+    --muted: #d8c8ef; --gold: #f5c542; --gold2: #ffdf7a; --red: #ff5a5f;
+    --green: #4cd37b; --yellow: #ffd23f; --blue: #5aa9ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif; }
+  #app { display: flex; gap: 12px; padding: 12px; max-width: 1320px; margin: 0 auto; align-items: flex-start; }
+  #stage { position: relative; flex: 1 1 auto; min-width: 0; }
+  canvas { width: 100%; height: auto; display: block; border-radius: 14px;
+    box-shadow: 0 8px 0 #1a1124, 0 12px 30px rgba(0,0,0,.4); background: #222; image-rendering: auto; }
+  #side { width: 320px; flex: 0 0 320px; display: flex; flex-direction: column; gap: 10px; }
+  .card { background: var(--panel); border-radius: 12px; padding: 10px 12px; box-shadow: 0 4px 0 #1f1530; }
+  .card h3 { margin: 0 0 6px; font-size: 14px; letter-spacing: .5px; text-transform: uppercase; color: var(--gold2); }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 15px; }
+  .big { font-size: 24px; font-weight: bold; color: var(--gold); }
+  .coin { display: inline-block; width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff2a8, #f5c542 55%, #b8860b);
+    vertical-align: -2px; margin-left: 4px; box-shadow: 0 0 0 1px #8a6508 inset; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .paper { background: #f3ead2; color: #2a2118; border-radius: 6px; padding: 8px 10px; font-family: Georgia, serif; }
+  .paper .hd { font-weight: bold; font-size: 15px; border-bottom: 2px solid #2a2118; margin-bottom: 4px; text-align: center; letter-spacing: 1px; }
+  .paper ul { margin: 4px 0 0; padding-left: 18px; font-size: 14px; }
+  .items { list-style: none; margin: 4px 0 0; padding: 0; font-size: 14px; }
+  .items li { padding: 2px 0; }
+  .bad { color: var(--red); font-weight: bold; }
+  .sus { color: var(--yellow); font-weight: bold; }
+  .ok { color: var(--green); }
+  #actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; padding: 8px 10px; font-size: 14px; font-weight: bold;
+    background: var(--gold); color: #3a2600; box-shadow: 0 3px 0 #a5780f; transition: transform .05s; }
+  button:active { transform: translateY(2px); box-shadow: 0 1px 0 #a5780f; }
+  button:disabled { background: #6d5d80; color: #b9abcc; box-shadow: 0 3px 0 #4a3d5a; cursor: not-allowed; }
+  button.red { background: var(--red); color: #fff; box-shadow: 0 3px 0 #a3282c; }
+  button.blue { background: var(--blue); color: #08213d; box-shadow: 0 3px 0 #2f6db0; }
+  button.green { background: var(--green); color: #06321a; box-shadow: 0 3px 0 #2a8a4e; }
+  kbd { background: rgba(0,0,0,.25); border-radius: 4px; padding: 0 4px; font-size: 12px; margin-left: 4px; }
+  #log { font-size: 13px; line-height: 1.35; max-height: 120px; overflow: hidden; }
+  #log div { opacity: .95; }
+  #log div:nth-child(n+2) { opacity: .7; }
+  #log div:nth-child(n+4) { opacity: .45; }
+  #trophies { display: flex; gap: 6px; min-height: 34px; align-items: flex-end;
+    border-bottom: 6px solid #8a5a2b; padding-bottom: 2px; }
+  #trophies .empty { font-size: 12px; color: var(--muted); }
+  .overlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(25, 14, 38, .78); border-radius: 14px; padding: 16px; z-index: 5; }
+  .overlay.show { display: flex; }
+  .dialog { background: var(--panel); border-radius: 16px; padding: 18px 22px; max-width: 720px; width: 100%;
+    box-shadow: 0 6px 0 #1f1530, 0 20px 40px rgba(0,0,0,.5); max-height: 100%; overflow: auto; }
+  .dialog h1 { margin: 0 0 6px; color: var(--gold); font-size: 34px; text-shadow: 0 3px 0 #8a5a00; }
+  .dialog h2 { margin: 0 0 8px; color: var(--gold2); }
+  .dialog p { margin: 6px 0; line-height: 1.4; }
+  .center { text-align: center; }
+  .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+  .shop-col h3 { margin: 0 0 6px; color: var(--gold2); }
+  .upg { background: var(--panel2); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+  .upg .t { font-weight: bold; }
+  .pips { display: inline-flex; gap: 3px; margin-left: 6px; vertical-align: middle; }
+  .pip { width: 12px; height: 12px; border-radius: 3px; background: #2a1d3a; border: 1px solid #7a6a90; }
+  .pip.on { background: var(--gold); border-color: var(--gold); }
+  .upg .d { font-size: 13px; color: var(--muted); margin: 3px 0 6px; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 14px; margin: 8px 0; }
+  @media (max-width: 980px) {
+    #app { flex-direction: column; }
+    #side { width: 100%; flex: none; }
+    .shop-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="game" width="960" height="600"></canvas>
+
+    <div class="overlay show" id="ovTitle">
+      <div class="dialog center">
+        <svg width="90" height="70" viewBox="0 0 90 70" aria-hidden="true"><rect x="10" y="20" width="70" height="45" rx="4" fill="#c98a4a" stroke="#5b3f2a" stroke-width="3"/><polygon points="5,22 45,2 85,22" fill="#f5c542" stroke="#8a5a00" stroke-width="3"/><rect x="38" y="42" width="14" height="23" fill="#5b3f2a"/><rect x="18" y="30" width="12" height="10" fill="#ffe9a8"/><rect x="60" y="30" width="12" height="10" fill="#ffe9a8"/></svg>
+        <h1>Gold Hotel</h1>
+        <p>Perimi apšiurusį pakelės viešbutį. Tikrink svečius prie įėjimo, vaikščiok po kambarius ir gaudyk blogiukus, kol jie nesusprogdino kambarių!</p>
+        <div class="keys" style="max-width:460px;margin:10px auto;text-align:left">
+          <b>Rodyklės / WASD</b><span>vaikščioti</span>
+          <b>Tarpas</b><span>skanuoti svečią prie stalo</span>
+          <b>E / X</b><span>įleisti / neįleisti</span>
+          <b>P</b><span>kviesti policiją (suima svečią šalia tavęs)</span>
+          <b>R</b><span>atstatyti susprogusį kambarį (stovint prie jo durų)</span>
+          <b>U</b><span>tobulinimai</span>
+        </div>
+        <p class="muted">Blogiuką išduoda: laikraštis, skeneris, keista išvaizda ar elgesys ir įvykiai (tiksėjimas, sprogimas).</p>
+        <p><button id="btnStart" style="font-size:20px;padding:10px 26px">Pradėti</button></p>
+      </div>
+    </div>
+
+    <div class="overlay" id="ovShop">
+      <div class="dialog">
+        <div class="row"><h2 style="margin:0">Tobulinimai</h2><span id="shopMoney" class="big"></span></div>
+        <p class="muted" id="shopProgress"></p>
+        <div class="shop-grid" id="shopGrid"></div>
+        <p class="center"><button class="blue" id="btnShopClose">Uždaryti <kbd>Esc</kbd></button></p>
+      </div>
+    </div>
+
+    <div class="overlay" id="ovInspector">
+      <div class="dialog center">
+        <svg width="110" height="120" viewBox="0 0 110 120" aria-hidden="true"><path d="M25 10 H85 V40 C85 65 70 75 55 75 C40 75 25 65 25 40 Z" fill="#f5c542" stroke="#8a5a00" stroke-width="4"/><path d="M25 18 C5 18 5 45 28 48" fill="none" stroke="#8a5a00" stroke-width="5"/><path d="M85 18 C105 18 105 45 82 48" fill="none" stroke="#8a5a00" stroke-width="5"/><rect x="48" y="75" width="14" height="18" fill="#d9a520" stroke="#8a5a00" stroke-width="3"/><rect x="30" y="93" width="50" height="16" rx="3" fill="#5b3f2a"/><text x="55" y="45" text-anchor="middle" font-size="22" font-weight="bold" fill="#8a5a00">1</text></svg>
+        <h2>Inspektorius atvyko!</h2>
+        <p id="inspText"></p>
+        <p><button id="btnFly" style="font-size:18px">Skristi</button></p>
+      </div>
+    </div>
+
+    <div class="overlay" id="ovOver">
+      <div class="dialog center">
+        <h1 style="color:var(--red);text-shadow:0 3px 0 #6a1010">BUM!</h1>
+        <h2>Susprogo visi kambariai. Pralaimėjai.</h2>
+        <p id="overText"></p>
+        <p><button id="btnRetry" style="font-size:18px">Bandyti iš naujo</button></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="side">
+    <div class="card">
+      <div class="row"><span id="worldName" style="font-weight:bold;color:var(--gold2)"></span><span class="muted" id="lapInfo"></span></div>
+      <div class="row" style="margin-top:4px"><span>Pinigai</span><span class="big"><span id="money">0</span><span class="coin"></span></span></div>
+      <div class="row"><span>Kambariai</span><span id="roomsInfo"></span></div>
+    </div>
+    <div class="card">
+      <h3>Laikraštis</h3>
+      <div class="paper" id="paper"></div>
+    </div>
+    <div class="card">
+      <h3>Registratūra</h3>
+      <div id="desk"></div>
+    </div>
+    <div class="card">
+      <h3>Veiksmai</h3>
+      <div id="actions"></div>
+    </div>
+    <div class="card">
+      <h3>Taurių lentyna</h3>
+      <div id="trophies"></div>
+    </div>
+    <div class="card">
+      <h3>Žinutės</h3>
+      <div id="log"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =======================================================================
+   CONFIG — VISI balanso skaičiai ir pasaulių duomenys vienoje vietoje.
+   ======================================================================= */
+const CONFIG = {
+  debug: /[?&]debug/.test(location.search),
+  debugMoney: 500,
+  startMoney: 0,
+  roomsCount: 6,
+  player: { speed: 210, radius: 12, stunTime: 2.2 },
+  guest: {
+    speed: 95,
+    fleeSpeed: 112,
+    patience: 32,          // sek., kiek svečias laukia eilėje
+    stayTime: [40, 70],    // sek., kiek nekaltas svečias gyvena kambaryje
+    richPayMult: 1.8,
+    innocentSunglasses: 0.08, // nekalti kartais irgi su tamsiais akiniais
+    innocentSusItem: 0.35,    // tikimybė turėti „įtartiną“, bet nekaltą daiktą
+    extraItems: [0, 2]        // papildomų nekaltų daiktų kiekis
+  },
+  police: { falseArrestFine: 25, fleeRewardMult: 0.6, catchRange: 75, animTime: 1.3 },
+  newspaper: { firstIssue: 6, nextIssueDelay: 18, wantedSpawnChance: 0.3, wantedBonus: 40 },
+  bomb: { visibleFrac: 0.45, tickHearRange: 190, stunRadius: 0 },
+  difficulty: {
+    hotelBaddieAdd: 0.02,       // kiekvienas viešbučio lygis +2% blogiukų
+    securityStealthAdd: 0.045,  // kiekvienas saugumo lygis daro blogiukus gudresnius
+    maxBaddieChance: 0.6,
+    lapMult: 0.15               // kiekvienas pakartotinis ratas sunkesnis 15%
+  },
+  // Tobulinimų efektai pagal lygį [0, 1, 2]
+  upgrades: {
+    price:   { bonus: [0, 0.45, 1.0] },                    // kambario kainos priedas
+    traffic: { spawnMult: [1, 0.8, 0.62], rich: [0.05, 0.25, 0.45], maxQueueAdd: [0, 1, 2] },
+    comfort: { patience: [0, 12, 25], tip: [0, 3, 7] },
+    scanner: { detect: [0.45, 0.78, 0.97], time: [1.6, 1.1, 0.7], identifySus: [false, true, true] },
+    vision:  { range: [0, 150, 9999] },                     // 9999 = mato visus kambarius
+    intel:   { traits: [1, 2, 4] }                          // kiek požymių rodo laikraštis
+  },
+  hotelSlots: ['price', 'traffic', 'comfort'],
+  securitySlots: ['scanner', 'vision', 'intel'],
+  flightTime: 2.8,
+  inspectorSpeed: 130,
+
+  /* -------------------- PASAULIAI --------------------
+     Kiekvienas pasaulis: pavadinimas, spalvos, balansas, tobulinimų vardai,
+     daiktai. Mechanika ta pati, keičiasi tik duomenys. */
+  worlds: [
+    {
+      id: 'pakele', name: 'Pakelės viešbutis', flightName: 'Afriką',
+      intro: 'Sveikas atvykęs į apšiurusį pakelės viešbutį! Tikrink svečius prie stalo.',
+      palette: { street: '#6f8f5a', streetLine: '#5d7a4b', lobby: '#d4ad74', lobbyTile: '#c79d63', corridor: '#a9855a', corridorRug: '#9b3d3d',
+                 room: '#c49565', wall: '#5b3f2a', wallLight: '#7a5638', bed: '#7b5a3b', sheet: '#e8e2d0', fancySheet: '#d94f5c', sign: '#f5c542' },
+      skins: ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac'],
+      balance: {
+        roomPrice: 12, policeReward: 45, rebuildCost: 55,
+        baddieChance: 0.26, stealth: 0.0, clumsy: 0.45, weirdLook: 0.55, behavior: 0.75,
+        spawnInterval: [6, 9], maxQueue: 4, bombTime: [42, 58],
+        upgradeCost: [60, 130]
+      },
+      baseTools: { scanner: 'Senas skeneris', vision: 'Tik savos akys', intel: 'Seno laikraščio skiautė' },
+      upgrades: {
+        price:   { title: 'Lovos',     levels: [{ n: 'Lovų keitimas', d: 'Naujos lovos — kambariai brangesni.' }, { n: 'Minkšti čiužiniai', d: 'Dar brangesni kambariai.' }] },
+        traffic: { title: 'Švara',     levels: [{ n: 'Tarakonų naikinimas', d: 'Daugiau svečių ir daugiau turtingų.' }, { n: 'Remontas', d: 'Svečių srautas didžiausias.' }] },
+        comfort: { title: 'Kava',      levels: [{ n: 'Kavos aparatas', d: 'Svečiai ilgiau laukia ir palieka arbatpinigių.' }, { n: 'Restoranėlis', d: 'Dar kantresni ir dosnesni svečiai.' }] },
+        scanner: { title: 'Skeneris',  levels: [{ n: 'Rankinis skeneris', d: 'Randa daugiau paslėptų daiktų, atpažįsta nekaltus.' }, { n: 'Rentgeno vartai', d: 'Mato beveik viską, greitai.' }] },
+        vision:  { title: 'Stebėjimas', levels: [{ n: 'Žiūronai', d: 'Kambarių vidų matai iš koridoriaus prie durų.' }, { n: 'Kameros koridoriuose', d: 'Matai visus kambarius iš karto.' }] },
+        intel:   { title: 'Laikraštis', levels: [{ n: 'Laikraščio prenumerata', d: 'Laikraštyje 2 ieškomo blogiuko požymiai.' }, { n: 'Laikraštis su nuotrauka', d: 'Visi 4 požymiai.' }] }
+      },
+      badItems: [
+        { kind: 'dynamite', name: 'Dinamitas' },
+        { kind: 'bomb', name: 'Bomba' },
+        { kind: 'duckbomb', name: 'Sprogstanti guminė antis' },
+        { kind: 'baguette', name: 'Dinamitas bagete' }
+      ],
+      goodItems: [
+        { kind: 'toothbrush', name: 'Dantų šepetėlis' },
+        { kind: 'book', name: 'Knyga' },
+        { kind: 'sock', name: 'Kojinės' },
+        { kind: 'duck', name: 'Guminė antis' },
+        { kind: 'sandwich', name: 'Sumuštinis' },
+        { kind: 'needles', name: 'Mezgimo virbalai', sus: true },
+        { kind: 'cat', name: 'Katinas lagamine', sus: true },
+        { kind: 'alarm', name: 'Žadintuvas (tiksi!)', sus: true }
+      ],
+      baddieWord: 'nevykėlis'
+    },
+    {
+      id: 'afrika', name: 'Afrikos safari viešbutis', flightName: 'robotų pasaulį',
+      intro: 'Afrika! Viešbutis vėl apšiuręs, o pinigų — nulis. Saugokis brakonierių ir kontrabandininkų.',
+      palette: { street: '#d9b26f', streetLine: '#c49a55', lobby: '#e8c98f', lobbyTile: '#dbb877', corridor: '#b88a4f', corridorRug: '#3f7d4a',
+                 room: '#d6a868', wall: '#6b4a24', wallLight: '#8c6534', bed: '#5c7a3a', sheet: '#f2e6c4', fancySheet: '#e0873a', sign: '#ffd23f' },
+      skins: ['#8d5524', '#c68642', '#6b3e1f', '#e0ac69', '#f1c27d'],
+      balance: {
+        roomPrice: 10, policeReward: 38, rebuildCost: 60,
+        baddieChance: 0.32, stealth: 0.15, clumsy: 0.25, weirdLook: 0.45, behavior: 0.65,
+        spawnInterval: [5, 8], maxQueue: 5, bombTime: [38, 52],
+        upgradeCost: [70, 150]
+      },
+      baseTools: { scanner: 'Rankų krata', vision: 'Tik savos akys', intel: 'Būgnų žinios' },
+      upgrades: {
+        price:   { title: 'Nameliai', levels: [{ n: 'Nameliai medyje', d: 'Brangesni kambariai.' }, { n: 'Nameliai su vaizdu į savaną', d: 'Dar brangesni.' }] },
+        traffic: { title: 'Safari',   levels: [{ n: 'Safari džipai', d: 'Daugiau ir turtingesnių svečių.' }, { n: 'Džipų parkas', d: 'Svečių srautas didžiausias.' }] },
+        comfort: { title: 'Baseinas', levels: [{ n: 'Baseinas', d: 'Kantresni svečiai, arbatpinigiai.' }, { n: 'Baseinas su begemotu', d: 'Svečiai sužavėti.' }] },
+        scanner: { title: 'Krata',    levels: [{ n: 'Beždžionėlė lagaminų krėtėja', d: 'Randa paslėptus daiktus.' }, { n: 'Beždžionėlių komanda', d: 'Randa beveik viską.' }] },
+        vision:  { title: 'Sekimas',  levels: [{ n: 'Pėdsakų sekimas', d: 'Matai kambarius iš koridoriaus.' }, { n: 'Žirafa sargybinė', d: 'Matai visus kambarius.' }] },
+        intel:   { title: 'Žinios',   levels: [{ n: 'Papūga šnipas', d: '2 ieškomo požymiai.' }, { n: 'Papūgų tinklas', d: 'Visi 4 požymiai.' }] }
+      },
+      badItems: [
+        { kind: 'trap', name: 'Brakonieriaus spąstai' },
+        { kind: 'dynamite', name: 'Dinamitas' },
+        { kind: 'tusk', name: 'Kontrabandinis dramblio kaulas' },
+        { kind: 'bomb', name: 'Bomba kokoso kevale' }
+      ],
+      goodItems: [
+        { kind: 'camera', name: 'Fotoaparatas' },
+        { kind: 'banana', name: 'Bananai' },
+        { kind: 'map', name: 'Safari žemėlapis' },
+        { kind: 'book', name: 'Gyvūnų knyga' },
+        { kind: 'needles', name: 'Bambukinės lazdelės', sus: true },
+        { kind: 'cat', name: 'Surikatos jauniklis', sus: true }
+      ],
+      baddieWord: 'brakonierius'
+    },
+    {
+      id: 'robotai', name: 'Robotų viešbutis', flightName: 'kosmosą',
+      intro: 'Robotų pasaulis: čia svečiai skardiniai, o blogiukai užkrėsti virusais.',
+      palette: { street: '#5d6b7a', streetLine: '#4a5663', lobby: '#b8c4cf', lobbyTile: '#a7b4c1', corridor: '#8494a3', corridorRug: '#2f8fbf',
+                 room: '#9fb0bf', wall: '#3a4652', wallLight: '#56636f', bed: '#4a5866', sheet: '#7fe3ff', fancySheet: '#ffd23f', sign: '#7fe3ff' },
+      skins: ['#c0c8d0', '#a9b3bd', '#d6dde3', '#9aa6b1'],
+      balance: {
+        roomPrice: 9, policeReward: 32, rebuildCost: 65,
+        baddieChance: 0.36, stealth: 0.28, clumsy: 0.15, weirdLook: 0.4, behavior: 0.55,
+        spawnInterval: [4.5, 7], maxQueue: 5, bombTime: [34, 48],
+        upgradeCost: [80, 170]
+      },
+      baseTools: { scanner: 'Rūdijęs detektorius', vision: 'Tik savos akys', intel: 'Spausdinta naujienų juosta' },
+      upgrades: {
+        price:   { title: 'Stotelės',   levels: [{ n: 'Įkrovimo stotelės', d: 'Vietoj lovų — brangiau.' }, { n: 'Greitasis įkrovimas', d: 'Dar brangiau.' }] },
+        traffic: { title: 'Reklama',    levels: [{ n: 'Neoninė reklama', d: 'Daugiau robotų.' }, { n: 'Robotų taksi', d: 'Srautas didžiausias.' }] },
+        comfort: { title: 'Baras',      levels: [{ n: 'Tepalo baras', d: 'Kantresni robotai.' }, { n: 'Tepalo SPA', d: 'Dosnūs robotai.' }] },
+        scanner: { title: 'Skeneris',   levels: [{ n: 'Viruso skeneris', d: 'Randa paslėptus virusus.' }, { n: 'Antivirusas 3000', d: 'Randa beveik viską.' }] },
+        vision:  { title: 'Magnetas',   levels: [{ n: 'Magnetas', d: 'Jauti kambarius iš koridoriaus.' }, { n: 'Kameros-dronai', d: 'Matai visus kambarius.' }] },
+        intel:   { title: 'Kodas',      levels: [{ n: 'Kodo tikrinimas', d: '2 požymiai.' }, { n: 'Pilnas kodo auditas', d: 'Visi 4 požymiai.' }] }
+      },
+      badItems: [
+        { kind: 'virus', name: 'Kompiuterinis virusas' },
+        { kind: 'bomb', name: 'EMP bomba' },
+        { kind: 'dynamite', name: 'Lazerinis dinamitas' }
+      ],
+      goodItems: [
+        { kind: 'oil', name: 'Tepalo skardinė' },
+        { kind: 'chip', name: 'Atminties lustas' },
+        { kind: 'book', name: 'Instrukcija' },
+        { kind: 'alarm', name: 'Laikrodžio mechanizmas', sus: true },
+        { kind: 'needles', name: 'Atsarginės antenos', sus: true }
+      ],
+      baddieWord: 'užkrėstas robotas'
+    },
+    {
+      id: 'kosmosas', name: 'Kosminis viešbutis', flightName: 'pradžią (sunkesnis ratas)',
+      intro: 'Kosmosas! Svečiai — ateiviai, o blogiukai — kosminiai.',
+      palette: { street: '#1b1f3b', streetLine: '#2b3160', lobby: '#4b3f7a', lobbyTile: '#43386e', corridor: '#3a3263', corridorRug: '#7a3fbf',
+                 room: '#5a4c8f', wall: '#1e1838', wallLight: '#2e2550', bed: '#2e2550', sheet: '#9be564', fancySheet: '#ff7ad9', sign: '#9be564' },
+      skins: ['#9be564', '#7ad3ff', '#ff9ad5', '#c9a0ff', '#ffe066'],
+      balance: {
+        roomPrice: 8, policeReward: 28, rebuildCost: 70,
+        baddieChance: 0.4, stealth: 0.38, clumsy: 0.1, weirdLook: 0.35, behavior: 0.5,
+        spawnInterval: [4, 6.5], maxQueue: 6, bombTime: [30, 44],
+        upgradeCost: [90, 190]
+      },
+      baseTools: { scanner: 'Kosminis zondas', vision: 'Tik savos akys', intel: 'Galaktikos žinios' },
+      upgrades: {
+        price:   { title: 'Kambariai', levels: [{ n: 'Nesvarumo kambariai', d: 'Brangesni kambariai.' }, { n: 'Žvaigždžių lubos', d: 'Dar brangesni.' }] },
+        traffic: { title: 'Teleportas', levels: [{ n: 'Teleportas', d: 'Daugiau svečių.' }, { n: 'Dvigubas teleportas', d: 'Srautas didžiausias.' }] },
+        comfort: { title: 'Kupolai',   levels: [{ n: 'Deguonies kupolai', d: 'Kantresni svečiai.' }, { n: 'Kupolai su sodu', d: 'Dosnūs svečiai.' }] },
+        scanner: { title: 'Skaitytuvas', levels: [{ n: 'Minčių skaitytuvas', d: 'Randa paslėptus daiktus.' }, { n: 'Minčių skaitytuvas PRO', d: 'Randa beveik viską.' }] },
+        vision:  { title: 'Spąstai',   levels: [{ n: 'Gravitacijos spąstai', d: 'Matai kambarius iš koridoriaus.' }, { n: 'Orbitinės kameros', d: 'Matai visus kambarius.' }] },
+        intel:   { title: 'Vertėjas',  levels: [{ n: 'Ateivių kalbos vertėjas', d: '2 požymiai.' }, { n: 'Galaktikos paieška', d: 'Visi 4 požymiai.' }] }
+      },
+      badItems: [
+        { kind: 'raygun', name: 'Spindulių pistoletas' },
+        { kind: 'bomb', name: 'Antimaterijos bomba' },
+        { kind: 'virus', name: 'Kosminis gleivių virusas' }
+      ],
+      goodItems: [
+        { kind: 'crystal', name: 'Energijos kristalas' },
+        { kind: 'map', name: 'Žvaigždėlapis' },
+        { kind: 'sandwich', name: 'Kosminis maistas' },
+        { kind: 'cat', name: 'Ateivių augintinis', sus: true },
+        { kind: 'alarm', name: 'Tiksintis kometos laikrodis', sus: true }
+      ],
+      baddieWord: 'kosminis blogiukas'
+    }
+  ]
+};
+
+/* =======================================================================
+   Pagalbinės funkcijos
+   ======================================================================= */
+const rand = (a, b) => a + Math.random() * (b - a);
+const randi = (a, b) => Math.floor(rand(a, b + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const inRect = (x, y, r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* =======================================================================
+   Geometrija (canvas 960x600, vaizdas iš viršaus)
+   ======================================================================= */
+const W = 960, H = 600;
+const GEO = {
+  street: { x: 0, y: 0, w: 60, h: H },
+  lobby: { x: 60, y: 40, w: 200, h: 520 },
+  lobbyWalk: { x: 68, y: 48, w: 184, h: 504 },
+  corridor: { x: 260, y: 260, w: 680, h: 80 },
+  connector: { x: 246, y: 262, w: 20, h: 76 },
+  desk: { x: 126, y: 250, w: 28, h: 100 },
+  deskZone: { x: 154, y: 236, w: 84, h: 128 },
+  front: { x: 100, y: 300 },
+  door1: { y1: 280, y2: 320 },   // įėjimas
+  door2: { y1: 440, y2: 480 },   // išėjimas
+  playerStart: { x: 190, y: 300 }
+};
+function queueSpot(i) {
+  if (i === 0) return { x: GEO.front.x, y: GEO.front.y };
+  return { x: 30, y: 300 - (i - 1) * 52 };
+}
+function buildRooms() {
+  const rooms = [];
+  const rw = GEO.corridor.w / 3, rh = 220;
+  for (let i = 0; i < CONFIG.roomsCount; i++) {
+    const col = i % 3, top = i < 3;
+    const x = GEO.corridor.x + col * rw, y = top ? 40 : 340;
+    const dx = x + rw / 2;
+    const room = {
+      id: i, num: (top ? 100 : 200) + col + 1, top,
+      x, y, w: rw, h: rh,
+      inner: { x: x + 8, y: y + 8, w: rw - 16, h: rh - 16 },
+      door: top ? { x: dx - 26, y: 246, w: 52, h: 20 } : { x: dx - 26, y: 334, w: 52, h: 20 },
+      doorC: { x: dx, y: top ? 260 : 340 },
+      spot: { x: dx - 10, y: top ? y + 120 : y + rh - 120 },
+      bed: top ? { x: dx + 20, y: y + 22, w: 64, h: 90 } : { x: dx + 20, y: y + rh - 112, w: 64, h: 90 },
+      state: 'free', guest: null, smoke: 0
+    };
+    rooms.push(room);
+  }
+  return rooms;
+}
+
+/* =======================================================================
+   Būsena
+   ======================================================================= */
+const S = {
+  mode: 'title', worldIndex: 0, lap: 0, money: 0, time: 0,
+  levels: null, rooms: [], guests: [], queue: [],
+  player: { x: GEO.playerStart.x, y: GEO.playerStart.y, stun: 0, face: 1, walk: 0 },
+  spawnTimer: 2, scan: null, paper: null, effects: [], floaters: [], police: [],
+  shake: 0, log: [], trophies: [], stats: null, insp: null, flight: null,
+  nextGuestId: 1, force: null, keys: {}
+};
+const world = () => CONFIG.worlds[S.worldIndex];
+const bal = () => world().balance;
+const lapMult = () => 1 + S.lap * CONFIG.difficulty.lapMult;
+
+function newLevels() { const l = {}; [...CONFIG.hotelSlots, ...CONFIG.securitySlots].forEach(k => l[k] = 0); return l; }
+function maxLevel(slot) { return world().upgrades[slot].levels.length; }
+function hotelLevelSum() { return CONFIG.hotelSlots.reduce((s, k) => s + S.levels[k], 0); }
+function securityLevelSum() { return CONFIG.securitySlots.reduce((s, k) => s + S.levels[k], 0); }
+function totalUpgrades() { return [...CONFIG.hotelSlots, ...CONFIG.securitySlots].reduce((s, k) => s + maxLevel(k), 0); }
+function boughtUpgrades() { return hotelLevelSum() + securityLevelSum(); }
+function upgradeCost(slot) { return Math.round(bal().upgradeCost[S.levels[slot]] * lapMult()); }
+
+function loadWorld(i) {
+  S.worldIndex = i;
+  S.money = CONFIG.startMoney;
+  S.levels = newLevels();
+  S.rooms = buildRooms();
+  S.guests = []; S.queue = []; S.effects = []; S.floaters = []; S.police = [];
+  S.player = { x: GEO.playerStart.x, y: GEO.playerStart.y, stun: 0, face: 1, walk: 0 };
+  S.spawnTimer = 2; S.scan = null; S.insp = null; S.flight = null; S.shake = 0;
+  S.paper = { wanted: null, order: null, spawned: false, next: CONFIG.newspaper.firstIssue, status: 'none', guestId: null };
+  S.stats = { caught: 0, exploded: 0, guests: 0, earned: 0 };
+  S.mode = 'play';
+  log(world().intro);
+  hideAll();
+  dirtyPanel = true;
+}
+
+/* =======================================================================
+   Žinutės, pinigai, garsai
+   ======================================================================= */
+function log(msg) { S.log.unshift(msg); S.log.length = Math.min(S.log.length, 8); dirtyPanel = true; }
+function addMoney(n, x, y) {
+  S.money = Math.max(0, S.money + n);
+  if (n > 0) S.stats.earned += n;
+  if (x !== undefined) floater((n >= 0 ? '+' : '') + n, x, y, n >= 0 ? '#ffe066' : '#ff6b6b');
+  dirtyPanel = true;
+}
+function floater(text, x, y, color, size) { S.floaters.push({ text, x, y, color, t: 0, life: 1.6, size: size || 18 }); }
+
+let audioCtx = null;
+function sfx(type) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    const set = (wave, f1, f2, dur, vol) => {
+      o.type = wave; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.start(t); o.stop(t + dur);
+    };
+    if (type === 'coin') set('square', 880, 1320, 0.15, 0.05);
+    else if (type === 'scan') set('sine', 500, 1200, 0.3, 0.05);
+    else if (type === 'boom') set('sawtooth', 160, 30, 0.7, 0.15);
+    else if (type === 'siren') set('triangle', 700, 1100, 0.5, 0.06);
+    else if (type === 'bad') set('square', 300, 120, 0.25, 0.05);
+    else if (type === 'buy') set('triangle', 600, 1400, 0.25, 0.06);
+    else if (type === 'win') set('triangle', 500, 1600, 0.9, 0.08);
+  } catch (e) { /* garsas neprivalomas */ }
+}
+
+/* =======================================================================
+   Svečių generavimas
+   ======================================================================= */
+const SHIRTS = [
+  { c: '#e74c3c', n: 'raudonais' }, { c: '#3498db', n: 'mėlynais' }, { c: '#2ecc71', n: 'žaliais' },
+  { c: '#f1c40f', n: 'geltonais' }, { c: '#9b59b6', n: 'violetiniais' }, { c: '#ecf0f1', n: 'baltais' }, { c: '#e67e22', n: 'oranžiniais' }
+];
+const HATS = [
+  { k: 'none', n: 'be kepurės' }, { k: 'cap', n: 'su kepuraite' }, { k: 'tophat', n: 'su cilindru' }, { k: 'cowboy', n: 'su kaubojaus skrybėle' }
+];
+const HAT_COLORS = ['#2c3e50', '#c0392b', '#27ae60', '#8e5a2b', '#2980b9'];
+const TRAITS = ['shirt', 'hat', 'mustache', 'glasses'];
+
+function randomLook() {
+  return {
+    shirt: randi(0, SHIRTS.length - 1), hat: randi(0, HATS.length - 1), hatColor: pick(HAT_COLORS),
+    mustache: Math.random() < 0.4, glasses: Math.random() < 0.35,
+    skin: pick(world().skins), sunglasses: false, mask: false
+  };
+}
+function traitText(key, look) {
+  if (key === 'shirt') return 'Vilki ' + SHIRTS[look.shirt].n + ' drabužiais';
+  if (key === 'hat') return 'Vaikšto ' + HATS[look.hat].n;
+  if (key === 'mustache') return look.mustache ? 'Turi ūsus' : 'Be ūsų';
+  if (key === 'glasses') return look.glasses ? 'Nešioja akinius' : 'Be akinių';
+  return '';
+}
+function matchesWanted(look) {
+  const w = S.paper.wanted; if (!w) return false;
+  return TRAITS.every(k => look[k] === w[k]);
+}
+
+function makeGuest(kind) {
+  const b = bal();
+  const stealth = clamp((b.stealth + securityLevelSum() * CONFIG.difficulty.securityStealthAdd) * lapMult(), 0, 0.85);
+  let bad = false, wanted = false;
+  if (kind === 'bad') bad = true;
+  else if (kind === 'wanted') { bad = true; wanted = true; }
+  else if (kind === 'good') bad = false;
+  else {
+    if (S.paper.wanted && !S.paper.spawned && Math.random() < CONFIG.newspaper.wantedSpawnChance) { bad = true; wanted = true; }
+    else {
+      const chance = clamp((b.baddieChance + hotelLevelSum() * CONFIG.difficulty.hotelBaddieAdd) * lapMult(), 0, CONFIG.difficulty.maxBaddieChance);
+      bad = Math.random() < chance;
+    }
+  }
+  if (wanted && !S.paper.wanted) wanted = false;
+  let look = randomLook();
+  if (wanted) { look = Object.assign(look, S.paper.wanted); S.paper.spawned = true; S.paper.guestId = S.nextGuestId; }
+  else { let tries = 0; while (matchesWanted(look) && tries++ < 30) look = randomLook(); }
+
+  const g = {
+    id: S.nextGuestId++, bad, wanted, look, x: 30, y: -30, state: 'queue', path: [],
+    items: [], scanned: false, scanResult: null, patience: 0, room: null, timer: 0, timerMax: 1,
+    face: 'normal', rich: false, pocket: false, weirdBehavior: false, behavior: pick(['sleep', 'read', 'dance', 'knit', 'tv']),
+    stealth, bob: Math.random() * 6, speed: CONFIG.guest.speed
+  };
+  const nGood = randi(CONFIG.guest.extraItems[0], CONFIG.guest.extraItems[1]);
+  const goods = world().goodItems;
+  for (let i = 0; i < nGood; i++) g.items.push(Object.assign({ bad: false }, pick(goods.filter(it => !it.sus))));
+  if (!bad && Math.random() < CONFIG.guest.innocentSusItem) g.items.push(Object.assign({ bad: false }, pick(goods.filter(it => it.sus))));
+  // kiekvienas turi bent vieną nekaltą daiktą (kitaip „tuščias“ lagaminas išduotų blogiuką)
+  if (g.items.length === 0) g.items.push(Object.assign({ bad: false }, pick(goods.filter(it => !it.sus))));
+  if (bad) {
+    g.items.push(Object.assign({ bad: true }, pick(world().badItems)));
+    g.pocket = Math.random() < clamp(b.clumsy - stealth, 0, 1);
+    if (Math.random() < clamp(b.weirdLook - stealth, 0, 1)) { if (Math.random() < 0.5) g.look.mask = true; else g.look.sunglasses = true; }
+    g.weirdBehavior = Math.random() < clamp(b.behavior - stealth * 0.5, 0.15, 1);
+  } else {
+    if (Math.random() < CONFIG.guest.innocentSunglasses) g.look.sunglasses = true;
+    g.rich = Math.random() < CONFIG.upgrades.traffic.rich[S.levels.traffic];
+  }
+  if (g.items.length === 0) g.items.push(Object.assign({ bad: false }, pick(goods.filter(it => !it.sus))));
+  g.items = shuffle(g.items);
+  g.patience = CONFIG.guest.patience + CONFIG.upgrades.comfort.patience[S.levels.comfort];
+  g.patienceMax = g.patience;
+  return g;
+}
+
+function spawnGuest(kind) {
+  const g = makeGuest(kind);
+  S.guests.push(g); S.queue.push(g);
+  S.stats.guests++;
+  return g;
+}
+
+/* =======================================================================
+   Kambariai ir judėjimas
+   ======================================================================= */
+function freeRoom() { return S.rooms.find(r => r.state === 'free'); }
+function pathToRoom(room) {
+  return [{ x: 100, y: 420 }, { x: 215, y: 420 }, { x: 215, y: 300 }, { x: room.doorC.x, y: 300 }, { x: room.doorC.x, y: room.doorC.y + (room.top ? -24 : 24) }, { x: room.spot.x, y: room.spot.y }];
+}
+function pathOutFromRoom(room) {
+  return [{ x: room.doorC.x, y: room.doorC.y + (room.top ? -24 : 24) }, { x: room.doorC.x, y: 300 }, { x: 215, y: 300 }, { x: 215, y: 460 }, { x: 64, y: 460 }, { x: 30, y: 480 }, { x: 30, y: 660 }];
+}
+function pathOutFromPoint(p) {
+  // bėgantis iš bet kur į išėjimą
+  if (p.x > 240) return [{ x: p.x, y: 300 }, { x: 215, y: 300 }, { x: 215, y: 460 }, { x: 64, y: 460 }, { x: 30, y: 480 }, { x: 30, y: 660 }];
+  return [{ x: 215, y: 460 }, { x: 64, y: 460 }, { x: 30, y: 480 }, { x: 30, y: 660 }];
+}
+function moveAlong(g, dt) {
+  if (!g.path.length) return true;
+  const t = g.path[0];
+  const dx = t.x - g.x, dy = t.y - g.y, d = Math.hypot(dx, dy);
+  const step = g.speed * dt;
+  if (d <= step) { g.x = t.x; g.y = t.y; g.path.shift(); return g.path.length === 0; }
+  g.x += dx / d * step; g.y += dy / d * step;
+  g.walk = (g.walk || 0) + dt * 10;
+  return false;
+}
+function walkRects() {
+  const r = [GEO.lobbyWalk, GEO.corridor, GEO.connector];
+  for (const room of S.rooms) { r.push(room.inner); r.push(room.door); }
+  return r;
+}
+let WALK = [];
+function walkable(x, y) {
+  if (inRect(x, y, { x: GEO.desk.x - 2, y: GEO.desk.y - 2, w: GEO.desk.w + 4, h: GEO.desk.h + 4 })) return false;
+  for (const r of WALK) if (inRect(x, y, r)) return true;
+  return false;
+}
+function canStand(x, y) {
+  const r = CONFIG.player.radius;
+  return walkable(x - r, y) && walkable(x + r, y) && walkable(x, y - r) && walkable(x, y + r) && walkable(x, y);
+}
+function playerRoom() {
+  const p = S.player;
+  return S.rooms.find(r => inRect(p.x, p.y, r.inner) || inRect(p.x, p.y, r.door)) || null;
+}
+function atDesk() { return inRect(S.player.x, S.player.y, GEO.deskZone); }
+function deskGuest() {
+  const g = S.queue[0];
+  if (g && g.state === 'queue' && Math.hypot(g.x - GEO.front.x, g.y - GEO.front.y) < 3) return g;
+  return null;
+}
+function roomVisible(room) {
+  const p = S.player;
+  const range = CONFIG.upgrades.vision.range[S.levels.vision];
+  if (range >= 9999) return true;
+  if (inRect(p.x, p.y, room.inner) || inRect(p.x, p.y, room.door)) return true;
+  if (range > 0 && inRect(p.x, p.y, GEO.corridor) && Math.abs(p.x - room.doorC.x) < range / 2 + 20 && Math.abs(p.y - room.doorC.y) < 60) return true;
+  return false;
+}
+
+/* =======================================================================
+   Veiksmai
+   ======================================================================= */
+function policeTarget() {
+  const p = S.player;
+  // 1) bėgantis blogiukas netoliese
+  let best = null, bd = CONFIG.police.catchRange;
+  for (const g of S.guests) if (g.state === 'fleeing') { const d = dist(p, g); if (d < bd) { bd = d; best = g; } }
+  if (best) return best;
+  // 2) svečias tame kambaryje, kur stovi
+  const room = playerRoom();
+  if (room && room.guest && room.guest.state === 'inRoom') return room.guest;
+  // 3) svečias prie stalo
+  if (atDesk()) { const g = deskGuest(); if (g) return g; }
+  return null;
+}
+function rebuildTarget() {
+  const p = S.player;
+  return S.rooms.find(r => r.state === 'destroyed' && (inRect(p.x, p.y, r.inner) || inRect(p.x, p.y, r.door) ||
+    (Math.abs(p.x - r.doorC.x) < 50 && Math.abs(p.y - r.doorC.y) < 50))) || null;
+}
+function getActions() {
+  const acts = [];
+  if (S.mode !== 'play') return acts;
+  const dg = atDesk() ? deskGuest() : null;
+  const scanning = !!S.scan;
+  if (dg) {
+    acts.push({ id: 'scan', label: scanning ? 'Skanuojama…' : (dg.scanned ? 'Nuskanuota' : 'Skanuoti'), key: 'Tarpas', enabled: !scanning && !dg.scanned, cls: 'blue' });
+    const fr = freeRoom();
+    acts.push({ id: 'admit', label: fr ? 'Įleisti (kamb. ' + fr.num + ')' : 'Nėra laisvų kambarių', key: 'E', enabled: !!fr && !scanning, cls: 'green' });
+    acts.push({ id: 'refuse', label: 'Neįleisti', key: 'X', enabled: !scanning, cls: '' });
+  }
+  const pt = policeTarget();
+  if (pt) acts.push({ id: 'police', label: pt.state === 'fleeing' ? 'Pagauti bėglį!' : 'Kviesti policiją', key: 'P', enabled: !scanning, cls: 'red' });
+  const rt = rebuildTarget();
+  if (rt) acts.push({ id: 'rebuild', label: 'Atstatyti ' + rt.num + ' (' + rebuildCost() + ')', key: 'R', enabled: S.money >= rebuildCost(), cls: '' });
+  acts.push({ id: 'shop', label: 'Tobulinimai (' + boughtUpgrades() + '/' + totalUpgrades() + ')', key: 'U', enabled: true, cls: '' });
+  return acts;
+}
+function rebuildCost() { return Math.round(bal().rebuildCost * lapMult()); }
+
+function doAction(id) {
+  if (S.mode === 'shop' && id === 'shop') { closeShop(); return; }
+  if (S.mode !== 'play') return;
+  const a = getActions().find(x => x.id === id);
+  if (!a || !a.enabled) return;
+  if (id === 'scan') startScan();
+  else if (id === 'admit') admitGuest();
+  else if (id === 'refuse') refuseGuest();
+  else if (id === 'police') callPolice();
+  else if (id === 'rebuild') rebuildRoom();
+  else if (id === 'shop') openShop();
+  dirtyPanel = true;
+}
+
+function startScan() {
+  const g = deskGuest(); if (!g) return;
+  S.scan = { guest: g, t: 0, dur: CONFIG.upgrades.scanner.time[S.levels.scanner] };
+  sfx('scan');
+}
+function finishScan() {
+  const g = S.scan.guest; S.scan = null;
+  const detect = clamp(CONFIG.upgrades.scanner.detect[S.levels.scanner] - g.stealth, 0.05, 0.98);
+  const identify = CONFIG.upgrades.scanner.identifySus[S.levels.scanner];
+  g.scanned = true;
+  g.scanResult = g.items.map(it => {
+    if (it.bad) {
+      const found = g.pocket || Math.random() < detect;
+      return found ? { name: it.name, kind: it.kind, cls: 'bad', tag: 'PAVOJINGA!' } : null;
+    }
+    if (it.sus && !identify) return { name: 'Neaiškus daiktas', kind: it.kind, cls: 'sus', tag: 'įtartina?' };
+    if (it.sus) return { name: it.name, kind: it.kind, cls: 'ok', tag: 'nepavojinga' };
+    return { name: it.name, kind: it.kind, cls: 'ok', tag: '' };
+  }).filter(Boolean);
+  if (g.scanResult.some(r => r.cls === 'bad')) { sfx('bad'); log('Skeneris pypsi: rastas pavojingas daiktas!'); }
+  else log('Skanavimas baigtas.');
+  dirtyPanel = true;
+}
+function admitGuest() {
+  const g = deskGuest(); const room = freeRoom(); if (!g || !room) return;
+  S.queue.shift();
+  room.state = 'occupied'; room.guest = g; g.room = room;
+  g.state = 'toRoom'; g.path = pathToRoom(room);
+  let pay = Math.round(bal().roomPrice * (1 + CONFIG.upgrades.price.bonus[S.levels.price]) * (g.rich ? CONFIG.guest.richPayMult : 1) / lapMult());
+  pay += CONFIG.upgrades.comfort.tip[S.levels.comfort];
+  addMoney(pay, g.x, g.y - 40); sfx('coin');
+  log('Svečias įleistas į ' + room.num + ' kambarį. Sumokėjo ' + pay + '.');
+}
+function refuseGuest() {
+  const g = deskGuest(); if (!g) return;
+  S.queue.shift();
+  g.state = 'leaving'; g.face = g.bad ? 'angry' : 'sad'; g.path = [{ x: 30, y: 300 }, { x: 30, y: 660 }];
+  if (g.wanted) { S.paper.status = 'gone'; scheduleNextIssue(); }
+  log(g.bad ? 'Neįleidai svečio. Jis išėjo bambėdamas…' : 'Neįleidai svečio. Jis nuliūdęs išėjo.');
+}
+function callPolice() {
+  const g = policeTarget(); if (!g) return;
+  if (S.queue[0] === g) S.queue.shift();
+  const fromState = g.state;
+  if (g.room) { const r = g.room; if (r.state === 'occupied') { r.state = 'free'; r.guest = null; } g.room = null; }
+  g.state = 'arrested'; g.timer = CONFIG.police.animTime; g.path = [];
+  S.police.push({ x: g.x + 24, y: g.y, t: 0, life: CONFIG.police.animTime, guest: g });
+  sfx('siren');
+  if (g.bad) {
+    let reward = Math.round(bal().policeReward / lapMult() * (fromState === 'fleeing' ? CONFIG.police.fleeRewardMult : 1));
+    if (g.wanted) reward += CONFIG.newspaper.wantedBonus;
+    addMoney(reward, g.x, g.y - 46); sfx('coin');
+    g.face = 'angry';
+    S.stats.caught++;
+    log((g.wanted ? 'Sugavai IEŠKOMĄ blogiuką' : 'Policija suėmė blogiuką') + '! Atlygis: ' + reward + '.');
+    floater('SUIMTAS!', g.x, g.y - 70, '#7fd3ff', 20);
+    if (g.wanted) { S.paper.status = 'caught'; scheduleNextIssue(); }
+  } else {
+    const fine = CONFIG.police.falseArrestFine;
+    addMoney(-fine, g.x, g.y - 46);
+    g.face = 'sad';
+    log('Oi! Svečias buvo nekaltas. Bauda: ' + fine + '.');
+    floater('Nekaltas!', g.x, g.y - 70, '#ff9a9a', 18);
+  }
+}
+function rebuildRoom() {
+  const r = rebuildTarget(); if (!r) return;
+  const c = rebuildCost(); if (S.money < c) return;
+  addMoney(-c, r.doorC.x, r.doorC.y);
+  r.state = 'free'; r.guest = null; r.smoke = 0;
+  sfx('buy');
+  log('Kambarys ' + r.num + ' atstatytas.');
+}
+
+/* =======================================================================
+   Laikraštis
+   ======================================================================= */
+function scheduleNextIssue() { S.paper.next = CONFIG.newspaper.nextIssueDelay; S.paper.wantedActive = false; }
+function newIssue() {
+  const look = randomLook();
+  S.paper.wanted = { shirt: look.shirt, hat: look.hat, mustache: look.mustache, glasses: look.glasses };
+  S.paper.order = shuffle(TRAITS);
+  S.paper.spawned = false; S.paper.status = 'wanted'; S.paper.guestId = null; S.paper.next = null;
+  log('Naujas laikraštis: ieškomas blogiukas!');
+  dirtyPanel = true;
+}
+
+/* =======================================================================
+   Sprogimas
+   ======================================================================= */
+function explode(room) {
+  const g = room.guest;
+  room.state = 'destroyed'; room.guest = null; room.smoke = 1;
+  S.shake = 0.6; sfx('boom');
+  S.stats.exploded++;
+  for (let i = 0; i < 40; i++) {
+    const a = Math.random() * Math.PI * 2, sp = rand(60, 260);
+    S.effects.push({ type: 'spark', x: room.inner.x + room.inner.w / 2, y: room.inner.y + room.inner.h / 2, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: 0, life: rand(0.5, 1.2), c: pick(['#ffb000', '#ff6a00', '#ffd84a', '#555', '#888']), r: rand(4, 12) });
+  }
+  S.effects.push({ type: 'boomtext', x: room.inner.x + room.inner.w / 2, y: room.inner.y + room.inner.h / 2, t: 0, life: 1.2 });
+  // žaidėjas kambaryje — apsvaigsta
+  const p = S.player;
+  if (inRect(p.x, p.y, room.inner) || inRect(p.x, p.y, room.door)) { p.stun = CONFIG.player.stunTime; p.soot = 6; floater('Ai!', p.x, p.y - 40, '#fff', 18); }
+  if (g) {
+    g.room = null; g.state = 'fleeing'; g.face = 'angry'; g.speed = CONFIG.guest.fleeSpeed;
+    g.path = [{ x: room.doorC.x, y: room.doorC.y + (room.top ? -24 : 24) }, ...pathOutFromPoint({ x: room.doorC.x, y: 300 })];
+    log('BUM! Kambarys ' + room.num + ' susprogo! Blogiukas bėga — pagauk jį (P)!');
+  }
+  if (S.rooms.every(r => r.state === 'destroyed')) gameOver();
+  dirtyPanel = true;
+}
+
+/* =======================================================================
+   Atnaujinimas
+   ======================================================================= */
+function update(dt) {
+  S.time += dt;
+  if (S.shake > 0) S.shake = Math.max(0, S.shake - dt);
+  updateEffects(dt);
+  if (S.mode === 'flight') { S.flight.t += dt; if (S.flight.t >= CONFIG.flightTime) finishFlight(); return; }
+  if (S.mode === 'inspector') { updateInspector(dt); return; }
+  if (S.mode !== 'play') return;
+
+  updatePlayer(dt);
+
+  // svečių atvykimas
+  S.spawnTimer -= dt;
+  const maxQ = bal().maxQueue + CONFIG.upgrades.traffic.maxQueueAdd[S.levels.traffic];
+  if (S.spawnTimer <= 0) {
+    if (S.queue.length < maxQ) spawnGuest(S.force || undefined), S.force = null;
+    const si = bal().spawnInterval;
+    S.spawnTimer = rand(si[0], si[1]) * CONFIG.upgrades.traffic.spawnMult[S.levels.traffic];
+  }
+
+  // laikraštis
+  if (S.paper.next !== null) { S.paper.next -= dt; if (S.paper.next <= 0) newIssue(); }
+
+  // skanavimas
+  if (S.scan) {
+    if (!atDesk() || deskGuest() !== S.scan.guest) { S.scan = null; log('Skanavimas nutrūko — grįžk prie stalo.'); }
+    else { S.scan.t += dt; if (S.scan.t >= S.scan.dur) finishScan(); }
+  }
+
+  // svečiai
+  S.queue.forEach((g, i) => {
+    if (g.state !== 'queue') return;
+    const spot = queueSpot(i);
+    if (i === 0 && g.x < 62 && Math.abs(g.y - 300) > 4) g.path = [{ x: 30, y: 300 }, spot];
+    else g.path = [spot];
+    moveAlong(g, dt);
+    g.patience -= dt;
+    if (g.patience <= 0) {
+      S.queue.splice(S.queue.indexOf(g), 1);
+      g.state = 'leaving'; g.face = 'sad';
+      g.path = g.x > 62 ? [{ x: 30, y: 300 }, { x: 30, y: 660 }] : [{ x: 30, y: g.y }, { x: -40, y: g.y }];
+      if (g.wanted) { S.paper.status = 'gone'; scheduleNextIssue(); }
+      if (S.scan && S.scan.guest === g) S.scan = null;
+      log('Svečias per ilgai laukė ir išėjo.');
+    }
+  });
+
+  for (const g of S.guests) {
+    if (g.state === 'toRoom') {
+      if (moveAlong(g, dt)) {
+        g.state = 'inRoom';
+        if (g.bad) { g.timerMax = g.timer = rand(bal().bombTime[0], bal().bombTime[1]) / Math.sqrt(lapMult()); }
+        else { g.timerMax = g.timer = rand(CONFIG.guest.stayTime[0], CONFIG.guest.stayTime[1]); }
+      }
+    } else if (g.state === 'inRoom') {
+      g.timer -= dt;
+      if (g.timer <= 0) {
+        if (g.bad) explode(g.room);
+        else {
+          const r = g.room; r.state = 'free'; r.guest = null; g.room = null;
+          g.state = 'leaving'; g.face = 'happy'; g.path = pathOutFromRoom(r);
+          floater('Ačiū!', g.x, g.y - 40, '#b6ffb0', 15);
+        }
+      }
+    } else if (g.state === 'leaving' || g.state === 'fleeing') {
+      if (moveAlong(g, dt)) {
+        if (g.state === 'fleeing') {
+          log('Blogiukas pabėgo…');
+          if (g.wanted) { S.paper.status = 'gone'; scheduleNextIssue(); }
+        }
+        g.state = 'gone';
+      }
+    } else if (g.state === 'arrested') {
+      g.timer -= dt; if (g.timer <= 0) g.state = 'gone';
+    }
+  }
+  S.guests = S.guests.filter(g => g.state !== 'gone');
+  S.police = S.police.filter(pc => (pc.t += dt) < pc.life);
+  for (const r of S.rooms) if (r.state === 'destroyed' && Math.random() < dt * 3) S.effects.push({ type: 'smoke', x: r.inner.x + rand(20, r.inner.w - 20), y: r.inner.y + rand(20, r.inner.h - 20), t: 0, life: 2, r: rand(6, 12) });
+}
+
+function updatePlayer(dt) {
+  const p = S.player;
+  if (p.soot) p.soot = Math.max(0, p.soot - dt);
+  if (p.stun > 0) { p.stun -= dt; return; }
+  let mx = 0, my = 0;
+  const k = S.keys;
+  if (k.ArrowLeft || k.KeyA) mx -= 1;
+  if (k.ArrowRight || k.KeyD) mx += 1;
+  if (k.ArrowUp || k.KeyW) my -= 1;
+  if (k.ArrowDown || k.KeyS) my += 1;
+  if (mx || my) {
+    const l = Math.hypot(mx, my), sp = CONFIG.player.speed * dt;
+    const nx = p.x + mx / l * sp, ny = p.y + my / l * sp;
+    if (canStand(nx, p.y)) p.x = nx;
+    if (canStand(p.x, ny)) p.y = ny;
+    if (mx) p.face = mx > 0 ? 1 : -1;
+    p.walk += dt * 12;
+  }
+}
+function updateEffects(dt) {
+  for (const e of S.effects) {
+    e.t += dt;
+    if (e.type === 'spark') { e.x += e.vx * dt; e.y += e.vy * dt; e.vx *= 0.94; e.vy *= 0.94; }
+    if (e.type === 'smoke') { e.y -= 18 * dt; }
+  }
+  S.effects = S.effects.filter(e => e.t < e.life);
+  for (const f of S.floaters) { f.t += dt; f.y -= 28 * dt; }
+  S.floaters = S.floaters.filter(f => f.t < f.life);
+}
+
+/* =======================================================================
+   Tobulinimai, inspektorius, pasaulio keitimas, pralaimėjimas
+   ======================================================================= */
+const $ = id => document.getElementById(id);
+function hideAll() { ['ovTitle', 'ovShop', 'ovInspector', 'ovOver'].forEach(id => $(id).classList.remove('show')); }
+function openShop() { S.mode = 'shop'; renderShop(); $('ovShop').classList.add('show'); }
+function closeShop() { if (S.mode !== 'shop') return; $('ovShop').classList.remove('show'); S.mode = 'play'; dirtyPanel = true; }
+function buyUpgrade(slot) {
+  if (S.levels[slot] >= maxLevel(slot)) return;
+  const c = upgradeCost(slot);
+  if (S.money < c) return;
+  S.money -= c;
+  const lv = world().upgrades[slot].levels[S.levels[slot]];
+  S.levels[slot]++;
+  sfx('buy');
+  log('Nupirkta: ' + lv.n + '!');
+  dirtyPanel = true;
+  if (boughtUpgrades() >= totalUpgrades()) { renderShop(); $('ovShop').classList.remove('show'); startInspector(); return; }
+  renderShop();
+}
+function renderShop() {
+  $('shopMoney').innerHTML = S.money + '<span class="coin"></span>';
+  $('shopProgress').textContent = 'Nupirkta ' + boughtUpgrades() + ' iš ' + totalUpgrades() + '. Nupirkus viską atvyks inspektorius! Gražesnis viešbutis pritraukia daugiau blogiukų, o geresni įrankiai — gudresnių.';
+  const col = (title, slots) => '<div class="shop-col"><h3>' + title + '</h3>' + slots.map(slot => {
+    const u = world().upgrades[slot], lv = S.levels[slot], max = u.levels.length;
+    const pips = Array.from({ length: max }, (_, i) => '<span class="pip' + (i < lv ? ' on' : '') + '"></span>').join('');
+    const cur = lv === 0 ? (world().baseTools[slot] || 'Pradinis lygis') : u.levels[lv - 1].n;
+    let body;
+    if (lv >= max) body = '<div class="d">Dabar: ' + esc(cur) + '</div><button disabled>Maksimalus lygis</button>';
+    else {
+      const nx = u.levels[lv], c = upgradeCost(slot);
+      body = '<div class="d">Dabar: ' + esc(cur) + '<br>Toliau: <b>' + esc(nx.n) + '</b> — ' + esc(nx.d) + '</div>' +
+        '<button data-buy="' + slot + '"' + (S.money < c ? ' disabled' : '') + '>Pirkti už ' + c + '</button>';
+    }
+    return '<div class="upg"><span class="t">' + esc(u.title) + '</span><span class="pips">' + pips + '</span>' + body + '</div>';
+  }).join('') + '</div>';
+  $('shopGrid').innerHTML = col('Viešbutis', CONFIG.hotelSlots) + col('Saugumas', CONFIG.securitySlots);
+}
+
+function startInspector() {
+  S.mode = 'inspector'; S.scan = null;
+  S.insp = { x: 30, y: -30, path: [{ x: 30, y: 300 }, { x: 100, y: 300 }, { x: 100, y: 420 }, { x: 215, y: 420 }, { x: 215, y: 300 }], speed: CONFIG.inspectorSpeed, arrived: false };
+  // inspektorius eina prie žaidėjo
+  const p = S.player;
+  if (p.x > 240) S.insp.path.push({ x: Math.min(p.x - 30, 900), y: 300 });
+  S.insp.path.push({ x: p.x - 30 > 240 ? p.x - 30 : Math.max(p.x - 30, 80), y: p.x > 240 ? 300 : p.y });
+  log('Viskas patobulinta! Atvyksta inspektorius…');
+  sfx('win');
+  dirtyPanel = true;
+}
+function updateInspector(dt) {
+  const i = S.insp;
+  if (!i.arrived && moveAlong(i, dt)) {
+    i.arrived = true;
+    const next = (S.worldIndex + 1) % CONFIG.worlds.length;
+    $('inspText').innerHTML = 'Inspektorius įteikia taurę <b>„Geriausias viešbutis pasaulyje“</b>!<br>Įveikta: <b>' + esc(world().name) + '</b>.<br>Dabar jis tave nuskraidins į <b>' + esc(world().flightName) + '</b>. Ten pradėsi nuo 0 pinigų ir apšiurusio viešbučio.';
+    $('btnFly').textContent = 'Skristi į ' + world().flightName;
+    $('ovInspector').classList.add('show');
+  }
+}
+function fly() {
+  if (S.mode !== 'inspector' || !S.insp || !S.insp.arrived) return;
+  S.trophies.push({ world: world().name, color: world().palette.sign });
+  $('ovInspector').classList.remove('show');
+  S.mode = 'flight'; S.flight = { t: 0, from: S.worldIndex };
+  dirtyPanel = true;
+}
+function finishFlight() {
+  let next = S.worldIndex + 1;
+  if (next >= CONFIG.worlds.length) { next = 0; S.lap++; }
+  loadWorld(next);
+}
+function gameOver() {
+  S.mode = 'gameover'; S.scan = null;
+  $('overText').innerHTML = 'Pagauta blogiukų: <b>' + S.stats.caught + '</b>, svečių: <b>' + S.stats.guests + '</b>, uždirbta: <b>' + S.stats.earned + '</b>.<br>Bandyk dar kartą — ' + esc(world().name) + ' laukia!';
+  $('ovOver').classList.add('show');
+  dirtyPanel = true;
+}
+
+/* =======================================================================
+   Piešimas
+   ======================================================================= */
+const cv = $('game'), ctx = cv.getContext('2d');
+
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+function drawItem(kind, x, y, s) {
+  s = s || 1;
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.lineWidth = 1.5; ctx.strokeStyle = '#222';
+  const spark = () => { ctx.fillStyle = (Math.floor(S.time * 8) % 2) ? '#ffd84a' : '#ff6a00'; ctx.beginPath(); ctx.arc(7, -11, 2.6, 0, 7); ctx.fill(); };
+  switch (kind) {
+    case 'dynamite':
+      ctx.fillStyle = '#d63031';
+      for (let i = -1; i <= 1; i++) { rr(-7 + i * 0, -6 + i * 4, 14, 4, 1.5); }
+      ctx.fillStyle = '#d63031'; ctx.fillRect(-7, -8, 4, 14); ctx.fillRect(-2, -8, 4, 14); ctx.fillRect(3, -8, 4, 14);
+      ctx.strokeRect(-7, -8, 4, 14); ctx.strokeRect(-2, -8, 4, 14); ctx.strokeRect(3, -8, 4, 14);
+      ctx.fillStyle = '#333'; ctx.fillRect(-8, -2, 16, 2);
+      ctx.beginPath(); ctx.moveTo(0, -8); ctx.quadraticCurveTo(2, -14, 7, -11); ctx.stroke(); spark(); break;
+    case 'bomb':
+      ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(0, 1, 8, 0, 7); ctx.fill();
+      ctx.fillStyle = '#555'; ctx.fillRect(-2, -9, 4, 3);
+      ctx.beginPath(); ctx.moveTo(0, -8); ctx.quadraticCurveTo(3, -13, 7, -11); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-3, -2, 2, 0, 7); ctx.fill(); spark(); break;
+    case 'duck': case 'duckbomb':
+      ctx.fillStyle = '#ffd32a'; ctx.beginPath(); ctx.ellipse(0, 3, 9, 6, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(4, -4, 5, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ff7f00'; ctx.beginPath(); ctx.moveTo(8, -4); ctx.lineTo(13, -3); ctx.lineTo(8, -1); ctx.fill();
+      ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(5, -5, 1, 0, 7); ctx.fill();
+      if (kind === 'duckbomb') { ctx.beginPath(); ctx.moveTo(-7, 0); ctx.quadraticCurveTo(-10, -8, -5, -10); ctx.stroke(); ctx.save(); ctx.translate(-12, 1); spark(); ctx.restore(); }
+      break;
+    case 'baguette':
+      ctx.fillStyle = '#e0a458'; ctx.save(); ctx.rotate(-0.5); ctx.beginPath(); ctx.ellipse(0, 0, 12, 4, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#d63031'; ctx.fillRect(8, -2.5, 6, 5); ctx.restore(); spark(); break;
+    case 'toothbrush':
+      ctx.fillStyle = '#4fc3f7'; ctx.save(); ctx.rotate(-0.6); ctx.fillRect(-10, -1.5, 18, 3); ctx.fillStyle = '#fff'; ctx.fillRect(6, -4, 5, 3); ctx.restore(); break;
+    case 'book': case 'map':
+      ctx.fillStyle = kind === 'map' ? '#f3e0a1' : '#6c5ce7'; ctx.fillRect(-8, -7, 16, 14); ctx.strokeRect(-8, -7, 16, 14);
+      ctx.strokeStyle = kind === 'map' ? '#c0392b' : '#fff'; ctx.beginPath(); ctx.moveTo(-5, -3); ctx.lineTo(5, -3); ctx.moveTo(-5, 1); ctx.lineTo(3, 3); ctx.stroke(); break;
+    case 'sock':
+      ctx.fillStyle = '#ff7675'; ctx.beginPath(); ctx.moveTo(-3, -9); ctx.lineTo(3, -9); ctx.lineTo(3, 3); ctx.lineTo(9, 5); ctx.lineTo(8, 9); ctx.lineTo(-3, 8); ctx.closePath(); ctx.fill(); ctx.stroke(); break;
+    case 'sandwich':
+      ctx.fillStyle = '#f5d491'; ctx.beginPath(); ctx.moveTo(-9, 6); ctx.lineTo(9, 6); ctx.lineTo(0, -8); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#6ab04c'; ctx.fillRect(-6, 1, 12, 2); break;
+    case 'needles':
+      ctx.strokeStyle = '#8e5a2b'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-9, 8); ctx.lineTo(7, -10); ctx.moveTo(-5, 9); ctx.lineTo(9, -7); ctx.stroke();
+      ctx.fillStyle = '#e84393'; ctx.beginPath(); ctx.arc(-3, 4, 5, 0, 7); ctx.fill(); break;
+    case 'cat':
+      ctx.fillStyle = '#95a5a6'; ctx.beginPath(); ctx.arc(0, 1, 8, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-7, -3); ctx.lineTo(-6, -11); ctx.lineTo(-1, -6); ctx.moveTo(7, -3); ctx.lineTo(6, -11); ctx.lineTo(1, -6); ctx.fill();
+      ctx.fillStyle = '#2d3436'; ctx.beginPath(); ctx.arc(-3, 0, 1.3, 0, 7); ctx.arc(3, 0, 1.3, 0, 7); ctx.fill(); break;
+    case 'alarm':
+      ctx.fillStyle = '#e17055'; ctx.beginPath(); ctx.arc(0, 1, 8, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 1, 5.5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(0, 1); ctx.lineTo(0, -3); ctx.moveTo(0, 1); ctx.lineTo(3, 2); ctx.stroke();
+      ctx.fillStyle = '#e17055'; ctx.beginPath(); ctx.arc(-6, -7, 2.5, 0, 7); ctx.arc(6, -7, 2.5, 0, 7); ctx.fill(); break;
+    case 'trap':
+      ctx.strokeStyle = '#636e72'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, 9, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, 9, Math.PI * 0.1, Math.PI * 0.9); ctx.stroke();
+      ctx.lineWidth = 1.5; for (let i = -6; i <= 6; i += 3) { ctx.beginPath(); ctx.moveTo(i, -6); ctx.lineTo(i, -2); ctx.moveTo(i, 6); ctx.lineTo(i, 2); ctx.stroke(); } break;
+    case 'tusk':
+      ctx.fillStyle = '#fdfbe6'; ctx.beginPath(); ctx.moveTo(-9, 8); ctx.quadraticCurveTo(-6, -10, 9, -9); ctx.quadraticCurveTo(-2, -4, -4, 9); ctx.closePath(); ctx.fill(); ctx.stroke(); break;
+    case 'camera':
+      ctx.fillStyle = '#2d3436'; ctx.fillRect(-9, -5, 18, 12); ctx.fillStyle = '#74b9ff'; ctx.beginPath(); ctx.arc(0, 1, 4, 0, 7); ctx.fill(); ctx.fillStyle = '#2d3436'; ctx.fillRect(-4, -8, 7, 3); break;
+    case 'banana':
+      ctx.strokeStyle = '#f9ca24'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, -6, 11, Math.PI * 0.2, Math.PI * 0.8); ctx.stroke(); break;
+    case 'virus':
+      ctx.fillStyle = '#00b894'; ctx.strokeStyle = '#00b894'; ctx.lineWidth = 2;
+      for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 10, Math.sin(a) * 10); ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(0, 0, 6, 0, 7); ctx.fill(); ctx.fillStyle = '#d63031'; ctx.beginPath(); ctx.arc(-2, -1, 1.4, 0, 7); ctx.arc(2, -1, 1.4, 0, 7); ctx.fill(); break;
+    case 'chip':
+      ctx.fillStyle = '#2d3436'; ctx.fillRect(-7, -7, 14, 14); ctx.strokeStyle = '#ffd32a';
+      for (let i = -5; i <= 5; i += 5) { ctx.beginPath(); ctx.moveTo(-10, i); ctx.lineTo(10, i); ctx.stroke(); } ctx.fillStyle = '#2d3436'; ctx.fillRect(-6, -6, 12, 12); break;
+    case 'oil':
+      ctx.fillStyle = '#0984e3'; ctx.fillRect(-6, -6, 12, 14); ctx.strokeRect(-6, -6, 12, 14); ctx.fillStyle = '#636e72'; ctx.fillRect(1, -11, 3, 6); break;
+    case 'raygun':
+      ctx.fillStyle = '#a29bfe'; ctx.fillRect(-9, -4, 14, 6); ctx.fillRect(-7, 2, 5, 7); ctx.fillStyle = '#ff7675'; ctx.beginPath(); ctx.arc(7, -1, 4, 0, 7); ctx.fill(); spark(); break;
+    case 'crystal':
+      ctx.fillStyle = '#81ecec'; ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(7, 0); ctx.lineTo(0, 10); ctx.lineTo(-7, 0); ctx.closePath(); ctx.fill(); ctx.stroke(); break;
+    default:
+      ctx.fillStyle = '#b2bec3'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#222'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText((kind || '?')[0].toUpperCase(), 0, 0);
+  }
+  ctx.restore();
+}
+
+// Žmogeliukas (pupelės formos, kaip Among Us). o: {shirt, skin, hat, hatColor, mustache, glasses, sunglasses, mask, face, role, pocket, rich, walk, shake}
+function drawPerson(x, y, o) {
+  ctx.save();
+  let sx = 0;
+  if (o.shake) sx = Math.sin(S.time * 40) * 1.8;
+  ctx.translate(x + sx, y);
+  if (o.alpha !== undefined) ctx.globalAlpha = o.alpha;
+  const step = o.walk ? Math.sin(o.walk) * 3 : 0;
+  // šešėlis
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(0, 20, 13, 4, 0, 0, 7); ctx.fill();
+  // kojos
+  ctx.fillStyle = o.legs || '#3d3d5c';
+  rr(-9, 10 + step * 0.3, 7, 10, 3); ctx.fill();
+  rr(2, 10 - step * 0.3, 7, 10, 3); ctx.fill();
+  // kuprinė
+  ctx.fillStyle = shade(o.shirt, -30); rr(-16, -6, 6, 16, 3); ctx.fill();
+  // kūnas
+  ctx.fillStyle = o.shirt; ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1.5;
+  rr(-12, -10, 24, 26, 10); ctx.fill(); ctx.stroke();
+  if (o.role === 'player') { // peteliškė
+    ctx.fillStyle = '#d63031'; ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(-6, -11); ctx.lineTo(-6, -3); ctx.closePath(); ctx.moveTo(0, -7); ctx.lineTo(6, -11); ctx.lineTo(6, -3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 2, 1.4, 0, 7); ctx.arc(0, 8, 1.4, 0, 7); ctx.fill();
+  }
+  if (o.role === 'police') { ctx.fillStyle = '#ffd32a'; ctx.beginPath(); ctx.arc(-5, -3, 3, 0, 7); ctx.fill(); }
+  if (o.role === 'inspector') { ctx.fillStyle = '#fff'; ctx.fillRect(-2, -9, 4, 16); ctx.fillStyle = '#2d3436'; ctx.fillRect(-1, -8, 2, 12); }
+  if (o.rich) { ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, -8, 8, 0.3, Math.PI - 0.3); ctx.stroke(); }
+  if (o.pocket) { ctx.save(); ctx.translate(10, 4); ctx.rotate(0.4); ctx.fillStyle = '#d63031'; ctx.fillRect(-2, -8, 5, 12); ctx.strokeStyle = '#222'; ctx.lineWidth = 1; ctx.strokeRect(-2, -8, 5, 12);
+    ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(2, -12); ctx.stroke(); ctx.fillStyle = (Math.floor(S.time * 8) % 2) ? '#ffd84a' : '#ff6a00'; ctx.beginPath(); ctx.arc(2, -13, 2, 0, 7); ctx.fill(); ctx.restore(); }
+  // galva
+  ctx.fillStyle = o.skin || '#f1c27d'; ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(0, -20, 10, 0, 7); ctx.fill(); ctx.stroke();
+  if (o.soot) { ctx.fillStyle = 'rgba(30,30,30,0.6)'; ctx.beginPath(); ctx.arc(0, -20, 10, 0, 7); ctx.fill(); }
+  // veidas
+  const face = o.face || 'normal';
+  ctx.fillStyle = '#222'; ctx.strokeStyle = '#222'; ctx.lineWidth = 1.5;
+  if (face === 'sleep') {
+    ctx.beginPath(); ctx.moveTo(-6, -21); ctx.lineTo(-2, -21); ctx.moveTo(2, -21); ctx.lineTo(6, -21); ctx.stroke();
+  } else if (o.stun) {
+    ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('x', -4, -18); ctx.fillText('x', 4, -18);
+  } else {
+    ctx.beginPath(); ctx.arc(-4, -21, 1.7, 0, 7); ctx.arc(4, -21, 1.7, 0, 7); ctx.fill();
+  }
+  if (face === 'angry') { ctx.beginPath(); ctx.moveTo(-7, -26); ctx.lineTo(-2, -24); ctx.moveTo(7, -26); ctx.lineTo(2, -24); ctx.stroke(); }
+  ctx.beginPath();
+  if (face === 'happy' || face === 'normal') ctx.arc(0, -17, 3.5, 0.2, Math.PI - 0.2);
+  else if (face === 'angry' || face === 'sad') ctx.arc(0, -13, 3.5, Math.PI + 0.3, -0.3);
+  else ctx.moveTo(-2, -15), ctx.lineTo(2, -15);
+  ctx.stroke();
+  if (o.mustache) { ctx.fillStyle = '#4a2c12'; ctx.beginPath(); ctx.ellipse(-3, -16.5, 3.5, 1.6, 0.2, 0, 7); ctx.ellipse(3, -16.5, 3.5, 1.6, -0.2, 0, 7); ctx.fill(); }
+  if (o.glasses) { ctx.strokeStyle = '#111'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(-4, -21, 3.3, 0, 7); ctx.moveTo(7.3, -21); ctx.arc(4, -21, 3.3, 0, 7); ctx.moveTo(-0.7, -21); ctx.lineTo(0.7, -21); ctx.stroke(); }
+  if (o.sunglasses) { ctx.fillStyle = '#111'; rr(-8, -24, 7, 5, 1.5); ctx.fill(); rr(1, -24, 7, 5, 1.5); ctx.fill(); ctx.fillRect(-1, -23, 2, 1.5); }
+  if (o.mask) { ctx.fillStyle = '#111'; rr(-10, -25, 20, 7, 3); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-4, -21.5, 1.6, 0, 7); ctx.arc(4, -21.5, 1.6, 0, 7); ctx.fill(); }
+  // kepurė
+  const hat = o.hat || 'none';
+  if (hat === 'cap') { ctx.fillStyle = o.hatColor; ctx.beginPath(); ctx.arc(0, -25, 9.5, Math.PI, 0); ctx.fill(); ctx.fillRect(0, -26, 14, 3); }
+  else if (hat === 'tophat') { ctx.fillStyle = o.hatColor; ctx.fillRect(-11, -30, 22, 3); ctx.fillRect(-7, -44, 14, 15); if (o.role === 'player') { ctx.fillStyle = '#f5c542'; ctx.fillRect(-7, -33, 14, 3); } }
+  else if (hat === 'cowboy') { ctx.fillStyle = o.hatColor; ctx.beginPath(); ctx.ellipse(0, -28, 15, 3.5, 0, 0, 7); ctx.fill(); rr(-7, -38, 14, 11, 4); ctx.fill(); }
+  else if (hat === 'police') { ctx.fillStyle = '#1e3799'; ctx.beginPath(); ctx.arc(0, -27, 9.5, Math.PI, 0); ctx.fill(); ctx.fillRect(-11, -28, 22, 3); ctx.fillStyle = '#ffd32a'; ctx.beginPath(); ctx.arc(0, -31, 2.2, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = clamp((n >> 16) + amt, 0, 255), g = clamp(((n >> 8) & 255) + amt, 0, 255), b = clamp((n & 255) + amt, 0, 255);
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+function guestOpts(g) {
+  const L = g.look;
+  return {
+    shirt: SHIRTS[L.shirt].c, skin: L.skin, hat: HATS[L.hat].k, hatColor: L.hatColor, mustache: L.mustache, glasses: L.glasses,
+    sunglasses: L.sunglasses, mask: L.mask, face: g.face, pocket: g.pocket && g.state !== 'arrested', rich: g.rich, walk: g.walk
+  };
+}
+function bubble(x, y, w, h) {
+  ctx.fillStyle = '#fff'; ctx.strokeStyle = '#222'; ctx.lineWidth = 1.5;
+  rr(x - w / 2, y - h, w, h, 8); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x - 5, y); ctx.lineTo(x, y + 7); ctx.lineTo(x + 5, y); ctx.fill();
+}
+function text(t, x, y, o) {
+  o = o || {};
+  ctx.font = (o.bold === false ? '' : 'bold ') + (o.size || 14) + 'px "Trebuchet MS", sans-serif';
+  ctx.textAlign = o.align || 'center'; ctx.textBaseline = o.base || 'middle';
+  if (o.stroke) { ctx.lineWidth = o.lw || 4; ctx.strokeStyle = o.stroke; ctx.lineJoin = 'round'; ctx.strokeText(t, x, y); }
+  ctx.fillStyle = o.color || '#fff'; ctx.fillText(t, x, y);
+}
+
+function drawWorld() {
+  const P = world().palette;
+  // gatvė
+  ctx.fillStyle = P.street; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = P.streetLine; for (let y = 0; y < H; y += 40) ctx.fillRect(26, y + 10, 8, 20);
+  if (world().id === 'kosmosas') { ctx.fillStyle = '#fff'; for (let i = 0; i < 40; i++) ctx.fillRect((i * 97) % 60, (i * 53) % H, 2, 2); }
+  // fono pastatas
+  ctx.fillStyle = P.wall; ctx.fillRect(60, 32, W - 64, H - 64);
+  // vestibiulis
+  ctx.fillStyle = P.lobby; ctx.fillRect(GEO.lobby.x + 8, GEO.lobby.y + 8, GEO.lobby.w - 8, GEO.lobby.h - 16);
+  ctx.fillStyle = P.lobbyTile;
+  for (let y = GEO.lobby.y + 8; y < GEO.lobby.y + GEO.lobby.h - 8; y += 32) for (let x = GEO.lobby.x + 8; x < GEO.lobby.x + GEO.lobby.w; x += 32)
+    if (((x + y) / 32) % 2 < 1) ctx.fillRect(x, y, 32, Math.min(32, GEO.lobby.y + GEO.lobby.h - 8 - y));
+  // durys į gatvę
+  ctx.fillStyle = P.lobby; ctx.fillRect(56, GEO.door1.y1, 16, GEO.door1.y2 - GEO.door1.y1); ctx.fillRect(56, GEO.door2.y1, 16, GEO.door2.y2 - GEO.door2.y1);
+  text('ĮĖJIMAS', 30, GEO.door1.y1 - 14, { size: 10, color: '#fff', stroke: '#0008', lw: 3 });
+  text('IŠĖJIMAS', 30, GEO.door2.y2 + 14, { size: 10, color: '#fff', stroke: '#0008', lw: 3 });
+  // koridorius
+  ctx.fillStyle = P.corridor; ctx.fillRect(GEO.corridor.x - 14, GEO.corridor.y, GEO.corridor.w + 14, GEO.corridor.h);
+  ctx.fillStyle = P.corridorRug; ctx.fillRect(GEO.corridor.x, GEO.corridor.y + 24, GEO.corridor.w - 8, 32);
+  ctx.fillStyle = 'rgba(255,255,255,0.15)'; for (let x = GEO.corridor.x + 10; x < GEO.corridor.x + GEO.corridor.w - 20; x += 30) ctx.fillRect(x, GEO.corridor.y + 38, 12, 4);
+
+  // viešbučio iškaba
+  const stars = hotelLevelSum();
+  ctx.fillStyle = '#2b1d3a'; rr(80, 54, 160, 46, 8); ctx.fill();
+  text('GOLD HOTEL', 160, 70, { size: 18, color: P.sign });
+  for (let i = 0; i < 7; i++) text('★', 124 + i * 12, 90, { size: 12, color: i <= stars ? '#ffd84a' : 'rgba(255,255,255,0.2)' });
+  // vestibiulio dekoracijos
+  if (S.levels.comfort >= 1) { // kavos aparatas
+    ctx.fillStyle = '#636e72'; rr(212, 120, 30, 38, 4); ctx.fill(); ctx.fillStyle = '#2d3436'; ctx.fillRect(218, 140, 18, 12);
+    ctx.fillStyle = '#fff'; ctx.fillRect(223, 145, 8, 7); ctx.fillStyle = '#e17055'; ctx.beginPath(); ctx.arc(227, 128, 3, 0, 7); ctx.fill();
+  }
+  if (S.levels.comfort >= 2) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(110, 180, 16, 0, 7); ctx.fill(); ctx.fillStyle = '#d63031'; ctx.beginPath(); ctx.arc(110, 180, 6, 0, 7); ctx.fill(); }
+  if (S.levels.traffic >= 1) { plant(84, 520); plant(236, 520); }
+  if (S.levels.traffic >= 2) { plant(84, 130); }
+  // registratūros stalas
+  const D = GEO.desk;
+  ctx.fillStyle = '#7b4a24'; rr(D.x, D.y, D.w, D.h, 5); ctx.fill();
+  ctx.fillStyle = '#a0632f'; rr(D.x + 3, D.y + 3, D.w - 6, D.h - 6, 4); ctx.fill();
+  // skeneris ant stalo
+  const scanLv = S.levels.scanner;
+  ctx.fillStyle = scanLv >= 2 ? '#74b9ff' : scanLv >= 1 ? '#55efc4' : '#95a5a6'; rr(D.x + 5, D.y + 36, 18, 28, 4); ctx.fill();
+  ctx.fillStyle = S.scan ? ((Math.floor(S.time * 10) % 2) ? '#ff7675' : '#ffeaa7') : '#2d3436'; ctx.fillRect(D.x + 8, D.y + 40, 12, 8);
+  ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(D.x + 14, D.y + 14, 4, 0, 7); ctx.fill(); // skambutis
+  // laikraštis ant stalo
+  ctx.fillStyle = '#f3ead2'; ctx.fillRect(D.x + 6, D.y + 74, 16, 18); ctx.fillStyle = '#555'; ctx.fillRect(D.x + 8, D.y + 77, 12, 2); ctx.fillRect(D.x + 8, D.y + 82, 9, 1.5); ctx.fillRect(D.x + 8, D.y + 86, 11, 1.5);
+  // zonos ženklas už stalo
+  if (deskGuest() && !atDesk() && S.mode === 'play') {
+    ctx.strokeStyle = 'rgba(255,230,100,' + (0.5 + 0.4 * Math.sin(S.time * 6)) + ')'; ctx.setLineDash([6, 5]); ctx.lineWidth = 2;
+    rr(GEO.deskZone.x, GEO.deskZone.y, GEO.deskZone.w, GEO.deskZone.h, 10); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // kambariai
+  for (const r of S.rooms) drawRoom(r);
+}
+function plant(x, y) {
+  ctx.fillStyle = '#8e5a2b'; rr(x - 9, y - 4, 18, 14, 3); ctx.fill();
+  ctx.fillStyle = '#27ae60'; ctx.beginPath(); ctx.arc(x, y - 10, 10, 0, 7); ctx.arc(x - 7, y - 4, 7, 0, 7); ctx.arc(x + 7, y - 4, 7, 0, 7); ctx.fill();
+}
+function drawRoom(r) {
+  const P = world().palette, I = r.inner;
+  const vis = roomVisible(r);
+  // grindys
+  ctx.fillStyle = r.state === 'destroyed' ? '#3d3530' : P.room; ctx.fillRect(I.x, I.y, I.w, I.h);
+  if (r.state !== 'destroyed') {
+    ctx.fillStyle = 'rgba(0,0,0,0.06)'; for (let x = I.x; x < I.x + I.w; x += 24) ctx.fillRect(x, I.y, 2, I.h);
+    // lova
+    const B = r.bed;
+    ctx.fillStyle = S.levels.price >= 2 ? '#d4a017' : P.bed; rr(B.x, B.y, B.w, B.h, 6); ctx.fill();
+    ctx.fillStyle = S.levels.price >= 1 ? P.fancySheet : P.sheet; rr(B.x + 4, B.y + (r.top ? 26 : 4), B.w - 8, B.h - 30, 5); ctx.fill();
+    ctx.fillStyle = '#fff'; rr(B.x + 8, B.y + (r.top ? 6 : B.h - 24), B.w - 16, 16, 6); ctx.fill();
+    // naktinis staliukas + lempa
+    ctx.fillStyle = P.wallLight; ctx.fillRect(B.x - 26, B.y + (r.top ? 6 : B.h - 26), 20, 20);
+    ctx.fillStyle = '#ffeaa7'; ctx.beginPath(); ctx.arc(B.x - 16, B.y + (r.top ? 16 : B.h - 16), 6, 0, 7); ctx.fill();
+    // kilimėlis
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(r.spot.x - 10, r.spot.y + (r.top ? 22 : -18), 34, 14, 0, 0, 7); ctx.fill();
+    if (S.levels.price === 0 && S.levels.traffic === 0) { // tarakonai, kol neišnaikinti
+      ctx.fillStyle = '#3b2a1a'; const t = S.time * 0.6 + r.id;
+      ctx.beginPath(); ctx.ellipse(I.x + 20 + (Math.sin(t) * 0.5 + 0.5) * (I.w - 40), I.y + I.h - 14, 3, 2, 0, 0, 7); ctx.fill();
+    }
+  } else {
+    ctx.fillStyle = '#2a2420';
+    for (let i = 0; i < 9; i++) { const px = I.x + 20 + ((i * 53) % (I.w - 40)), py = I.y + 20 + ((i * 37) % (I.h - 40)); ctx.beginPath(); ctx.arc(px, py, 8 + (i % 3) * 4, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#5a4a3a'; for (let i = 0; i < 6; i++) ctx.fillRect(I.x + 30 + i * 28, I.y + I.h / 2 + ((i % 2) ? 12 : -18), 18, 6);
+  }
+  // svečias kambaryje
+  const g = r.guest;
+  if (g && g.state === 'inRoom' && vis) drawRoomGuest(r, g);
+
+  // „rūkas“ — nematomas kambarys
+  if (!vis) {
+    ctx.fillStyle = 'rgba(22,16,32,0.86)'; ctx.fillRect(I.x, I.y, I.w, I.h);
+    text(String(r.num), I.x + I.w / 2, I.y + I.h / 2 - 8, { size: 24, color: 'rgba(255,255,255,0.25)' });
+    if (r.state === 'destroyed') text('SUGRIAUTA', I.x + I.w / 2, I.y + I.h / 2 + 18, { size: 12, color: 'rgba(255,120,120,0.6)' });
+    else if (r.state === 'occupied') text('užimta', I.x + I.w / 2, I.y + I.h / 2 + 18, { size: 12, color: 'rgba(255,255,255,0.3)' });
+  } else {
+    text(String(r.num), I.x + 18, r.top ? I.y + 14 : I.y + I.h - 14, { size: 12, color: 'rgba(0,0,0,0.35)' });
+  }
+  // durys
+  const Dd = r.door;
+  ctx.fillStyle = r.state === 'destroyed' ? '#1e1a17' : '#d9c39a';
+  ctx.fillRect(Dd.x, r.top ? 252 : 340, Dd.w, 8);
+  // durų lemputė
+  const lampC = r.state === 'destroyed' ? '#ff4d4d' : r.state === 'occupied' ? '#ffd23f' : '#4cd37b';
+  ctx.fillStyle = lampC; ctx.beginPath(); ctx.arc(Dd.x - 8, r.top ? 256 : 344, 4, 0, 7); ctx.fill();
+  // tiksėjimas už durų
+  if (g && g.bad && g.state === 'inRoom' && g.timer < g.timerMax * CONFIG.bomb.visibleFrac && S.mode === 'play') {
+    const d = Math.hypot(S.player.x - r.doorC.x, S.player.y - r.doorC.y);
+    if (d < CONFIG.bomb.tickHearRange || vis) {
+      const tk = Math.floor(S.time * 2) % 2 ? 'tik' : 'tak';
+      text(tk, r.doorC.x + (Math.floor(S.time * 2) % 2 ? 26 : -26), r.doorC.y + (r.top ? 14 : -14), { size: 13, color: '#ff7675', stroke: '#000', lw: 3 });
+    }
+  }
+  // smilkstantis sugriautas kambarys — matomas visada (įvykis)
+}
+function drawRoomGuest(r, g) {
+  const x = g.x, y = g.y;
+  const o = guestOpts(g);
+  const urgent = g.bad && g.timer < g.timerMax * CONFIG.bomb.visibleFrac;
+  if (g.bad) {
+    o.shake = g.weirdBehavior || urgent;
+    o.face = g.weirdBehavior ? 'angry' : 'normal';
+    // bomba ant grindų paskutinėje fazėje
+    if (urgent) {
+      const bx = r.bed.x - 16, by = r.spot.y + (r.top ? 40 : -40);
+      drawItem('bomb', bx, by, 1.5);
+      const blink = Math.floor(S.time * (4 + 10 * (1 - g.timer / (g.timerMax * CONFIG.bomb.visibleFrac)))) % 2;
+      if (blink) { ctx.fillStyle = '#ff3030'; ctx.beginPath(); ctx.arc(bx + 8, by - 4, 3, 0, 7); ctx.fill(); }
+    }
+  } else {
+    if (g.behavior === 'sleep') o.face = 'sleep';
+    if (g.behavior === 'dance') o.shake = true;
+  }
+  drawPerson(x, y, o);
+  // elgesio burbulas
+  const by = y - 48;
+  if (g.bad && g.weirdBehavior) {
+    bubble(x, by, 62, 28);
+    const ph = Math.floor(S.time / 1.5) % 2;
+    if (ph) text('hehe', x, by - 14, { size: 13, color: '#c0392b' });
+    else drawItem(g.items.find(i => i.bad).kind, x, by - 14, 1);
+  } else if (!g.bad) {
+    if (g.behavior === 'sleep') text('Zzz', x + 16, y - 40 - (S.time * 8 % 8), { size: 13, color: '#fff', stroke: '#0006', lw: 3 });
+    else if (g.behavior === 'read') drawItem('book', x + 14, y - 2, 0.9);
+    else if (g.behavior === 'knit') drawItem('needles', x + 14, y - 2, 0.9);
+    else if (g.behavior === 'dance') text('♪', x + 16 + Math.sin(S.time * 4) * 4, y - 38, { size: 16, color: '#fff', stroke: '#0006', lw: 3 });
+    else if (g.behavior === 'tv') { ctx.fillStyle = '#2d3436'; ctx.fillRect(x - 40, y + (r.top ? 36 : -50), 26, 16); ctx.fillStyle = ['#74b9ff', '#55efc4', '#ffeaa7'][Math.floor(S.time * 3) % 3]; ctx.fillRect(x - 37, y + (r.top ? 39 : -47), 20, 10); }
+  }
+  // kameros lygiu (vision 2) rodom bombos laiko juostą
+  if (g.bad && S.levels.vision >= 2) {
+    const f = clamp(g.timer / g.timerMax, 0, 1);
+    ctx.fillStyle = '#0008'; ctx.fillRect(x - 20, y + 26, 40, 5);
+    ctx.fillStyle = f < 0.3 ? '#ff4d4d' : '#ffd23f'; ctx.fillRect(x - 20, y + 26, 40 * f, 5);
+  }
+}
+
+function drawGuests() {
+  // eilėje ir vaikštantys (ne kambaryje)
+  const list = S.guests.filter(g => g.state !== 'inRoom').sort((a, b) => a.y - b.y);
+  for (const g of list) {
+    const o = guestOpts(g);
+    if (g.state === 'arrested') { o.alpha = clamp(g.timer / 0.5, 0, 1); }
+    if (g.state === 'fleeing') o.shake = false;
+    drawPerson(g.x, g.y, o);
+    if (g.state === 'fleeing') text('!!', g.x + 16, g.y - 40, { size: 16, color: '#ff4d4d', stroke: '#000', lw: 3 });
+    if (g.state === 'queue') {
+      // kantrybės juosta
+      const f = clamp(g.patience / g.patienceMax, 0, 1);
+      ctx.fillStyle = '#0008'; ctx.fillRect(g.x - 14, g.y - 44, 28, 4);
+      ctx.fillStyle = f > 0.5 ? '#4cd37b' : f > 0.25 ? '#ffd23f' : '#ff4d4d'; ctx.fillRect(g.x - 14, g.y - 44, 28 * f, 4);
+    }
+  }
+  // prie stalo — skanavimo rezultatas
+  const dg = deskGuest();
+  if (dg && dg.scanned) {
+    const res = dg.scanResult;
+    const w = Math.max(40, res.length * 26 + 14);
+    bubble(dg.x, dg.y - 50, w, 30);
+    if (!res.length) text('tuščia', dg.x, dg.y - 65, { size: 11, color: '#555' });
+    res.forEach((it, i) => {
+      const ix = dg.x - (res.length - 1) * 13 + i * 26;
+      drawItem(it.kind, ix, dg.y - 65, 0.9);
+      if (it.cls === 'bad') { ctx.strokeStyle = '#ff3030'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ix, dg.y - 65, 11, 0, 7); ctx.stroke(); }
+      if (it.cls === 'sus') text('?', ix + 9, dg.y - 74, { size: 12, color: '#e1a500' });
+    });
+  }
+  if (S.scan) {
+    const g = S.scan.guest, f = S.scan.t / S.scan.dur;
+    ctx.fillStyle = 'rgba(85,239,196,0.25)'; ctx.fillRect(g.x - 16, g.y - 32, 32, 52);
+    ctx.fillStyle = '#55efc4'; ctx.fillRect(g.x - 18, g.y - 32 + 52 * f, 36, 3);
+  }
+}
+function drawPlayer() {
+  const p = S.player;
+  drawPerson(p.x, p.y, { shirt: '#f5c542', skin: '#ffdbac', hat: 'tophat', hatColor: '#1e1e1e', face: 'happy', role: 'player',
+    walk: (S.keys.ArrowLeft || S.keys.ArrowRight || S.keys.ArrowUp || S.keys.ArrowDown || S.keys.KeyA || S.keys.KeyD || S.keys.KeyW || S.keys.KeyS) ? p.walk : 0,
+    stun: p.stun > 0, soot: p.soot > 0, legs: '#2d2d44' });
+  if (p.stun > 0) for (let i = 0; i < 3; i++) { const a = S.time * 5 + i * 2.1; text('★', p.x + Math.cos(a) * 14, p.y - 46 + Math.sin(a) * 4, { size: 11, color: '#ffd84a' }); }
+}
+function drawPolice() {
+  for (const pc of S.police) {
+    const a = pc.t < 0.3 ? pc.t / 0.3 : 1;
+    drawPerson(pc.x, pc.y, { shirt: '#1e3799', skin: '#f1c27d', hat: 'police', role: 'police', face: 'normal', alpha: a });
+    const c = Math.floor(S.time * 8) % 2 ? '#ff3030' : '#3080ff';
+    ctx.fillStyle = c; ctx.globalAlpha = 0.35; ctx.beginPath(); ctx.arc(pc.x - 12, pc.y - 10, 40, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+  }
+}
+function drawEffects() {
+  for (const e of S.effects) {
+    const f = e.t / e.life;
+    if (e.type === 'spark') { ctx.globalAlpha = 1 - f; ctx.fillStyle = e.c; ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (1 - f * 0.5), 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
+    else if (e.type === 'smoke') { ctx.globalAlpha = 0.4 * (1 - f); ctx.fillStyle = '#888'; ctx.beginPath(); ctx.arc(e.x, e.y, e.r + f * 10, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
+    else if (e.type === 'boomtext') text('BUM!', e.x, e.y - f * 30, { size: 40 + f * 20, color: '#ffd84a', stroke: '#b33', lw: 6 });
+  }
+  for (const fl of S.floaters) { ctx.globalAlpha = clamp(1 - fl.t / fl.life, 0, 1); text(fl.text, fl.x, fl.y, { size: fl.size, color: fl.color, stroke: '#000', lw: 4 }); ctx.globalAlpha = 1; }
+}
+function drawInspector() {
+  const i = S.insp; if (!i) return;
+  drawPerson(i.x, i.y, { shirt: '#7f8c8d', skin: '#ffdbac', hat: 'tophat', hatColor: '#2d3436', glasses: true, mustache: true, role: 'inspector', face: 'happy', walk: i.arrived ? 0 : S.time * 10 });
+  // taurė rankose
+  const tx = i.x + 18, ty = i.y - 4;
+  ctx.fillStyle = '#f5c542'; ctx.strokeStyle = '#8a5a00'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(tx - 8, ty - 12); ctx.lineTo(tx + 8, ty - 12); ctx.lineTo(tx + 6, ty - 2); ctx.quadraticCurveTo(tx, ty + 4, tx - 6, ty - 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillRect(tx - 2, ty + 1, 4, 6); ctx.fillRect(tx - 6, ty + 7, 12, 3);
+  if (!i.arrived) text('Inspektorius', i.x, i.y - 56, { size: 12, color: '#fff', stroke: '#000', lw: 3 });
+}
+function drawFlight() {
+  const f = S.flight.t / CONFIG.flightTime;
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#5fb3ff'); g.addColorStop(1, '#c9e8ff');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#fff';
+  for (let i = 0; i < 8; i++) { const cx = ((i * 180 - S.flight.t * 300) % (W + 200) + W + 200) % (W + 200) - 100, cy = 80 + (i * 67) % 420; ctx.beginPath(); ctx.arc(cx, cy, 30, 0, 7); ctx.arc(cx + 30, cy + 5, 24, 0, 7); ctx.arc(cx - 28, cy + 8, 20, 0, 7); ctx.fill(); }
+  // lėktuvas
+  const px = -100 + f * (W + 200), py = 300 + Math.sin(f * 6) * 20;
+  ctx.save(); ctx.translate(px, py);
+  ctx.fillStyle = '#ecf0f1'; ctx.strokeStyle = '#2d3436'; ctx.lineWidth = 2;
+  rr(-60, -14, 120, 28, 14); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#f5c542'; ctx.beginPath(); ctx.moveTo(-10, 0); ctx.lineTo(-30, 40); ctx.lineTo(10, 40); ctx.lineTo(20, 0); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-50, -10); ctx.lineTo(-62, -36); ctx.lineTo(-44, -36); ctx.lineTo(-36, -10); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#74b9ff'; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(-24 + i * 16, -3, 4, 0, 7); ctx.fill(); }
+  ctx.restore();
+  const next = CONFIG.worlds[(S.worldIndex + 1) % CONFIG.worlds.length];
+  text('Skrendame į: ' + next.name, W / 2, 80, { size: 30, color: '#fff', stroke: '#2b1d3a', lw: 6 });
+  text('Taurė „Geriausias viešbutis pasaulyje“ jau lentynoje!', W / 2, 120, { size: 18, color: '#ffd84a', stroke: '#2b1d3a', lw: 5 });
+}
+
+function render() {
+  ctx.save();
+  if (S.mode === 'flight') { drawFlight(); ctx.restore(); return; }
+  if (S.shake > 0) ctx.translate(rand(-6, 6) * S.shake, rand(-6, 6) * S.shake);
+  drawWorld();
+  drawGuests();
+  drawPolice();
+  drawInspector();
+  drawPlayer();
+  drawEffects();
+  // apatinė užuomina
+  if (S.mode === 'play') {
+    const hint = contextHint();
+    if (hint) { ctx.fillStyle = 'rgba(20,12,30,0.75)'; rr(W / 2 - 230, H - 30, 460, 24, 10); ctx.fill(); text(hint, W / 2, H - 18, { size: 13, color: '#fff7e6' }); }
+  }
+  ctx.restore();
+}
+function contextHint() {
+  const dg = deskGuest();
+  if (S.player.stun > 0) return 'Apsvaigai nuo sprogimo…';
+  const pt = policeTarget();
+  if (pt && pt.state === 'fleeing') return 'Blogiukas bėga! Spausk P, kad pagautum!';
+  if (atDesk() && dg) return dg.scanned ? 'E — įleisti, X — neįleisti, P — policija' : 'Tarpas — skanuoti svečią';
+  if (dg && !atDesk()) return 'Prie registratūros laukia svečias!';
+  const rt = rebuildTarget();
+  if (rt) return S.money >= rebuildCost() ? 'R — atstatyti kambarį už ' + rebuildCost() : 'Atstatymui reikia ' + rebuildCost() + ' pinigų';
+  const room = playerRoom();
+  if (room && room.guest && room.guest.state === 'inRoom') return 'Įtari svečią? P — kviesti policiją';
+  return '';
+}
+
+/* =======================================================================
+   Šoninis skydelis (HTML)
+   ======================================================================= */
+let dirtyPanel = true, panelTimer = 0;
+const panelCache = {};
+function setHTML(id, html) { if (panelCache[id] !== html) { panelCache[id] = html; $(id).innerHTML = html; } }
+function renderPanel() {
+  const w = world();
+  setHTML('worldName', esc(w.name));
+  setHTML('lapInfo', S.lap ? (S.lap + 1) + ' ratas' : 'Pasaulis ' + (S.worldIndex + 1) + '/' + CONFIG.worlds.length);
+  setHTML('money', String(S.money));
+  const ok = S.rooms.filter(r => r.state !== 'destroyed').length, occ = S.rooms.filter(r => r.state === 'occupied').length;
+  setHTML('roomsInfo', '<span class="' + (ok <= 2 ? 'bad' : '') + '">' + ok + '/' + S.rooms.length + ' sveiki</span> <span class="muted">(' + occ + ' užimti)</span>');
+
+  // laikraštis
+  let paper = '<div class="hd">PAKELĖS ŽINIOS</div>';
+  const P = S.paper;
+  if (P && P.wanted && P.status === 'wanted') {
+    const n = CONFIG.upgrades.intel.traits[S.levels.intel];
+    paper += '<b>IEŠKOMAS ' + esc(w.baddieWord.toUpperCase()) + '!</b><ul>' + P.order.slice(0, n).map(k => '<li>' + esc(traitText(k, P.wanted)) + '</li>').join('') + '</ul>' +
+      '<div style="font-size:12px;margin-top:4px">Atlygis už sulaikymą: +' + CONFIG.newspaper.wantedBonus + ' priedas</div>';
+  } else if (P && P.status === 'caught') paper += 'Ieškomas blogiukas <b>sulaikytas</b>! Laukite naujo numerio.';
+  else if (P && P.status === 'gone') paper += 'Ieškomas blogiukas dingo iš akių. Laukite naujo numerio.';
+  else paper += 'Šiandien ramu. Naujas numeris netrukus.';
+  setHTML('paper', paper.replace('PAKELĖS ŽINIOS', w.id === 'pakele' ? 'PAKELĖS ŽINIOS' : esc(w.name.toUpperCase())));
+
+  // registratūra
+  const dg = deskGuest();
+  let desk = '';
+  if (!dg) desk = '<span class="muted">Prie stalo nieko nėra. Eilėje: ' + S.queue.length + '.</span>';
+  else {
+    desk = '<div>Prie stalo laukia svečias' + (dg.rich ? ' <span style="color:var(--gold)">(turtingas)</span>' : '') + '. Eilėje: ' + S.queue.length + '.</div>';
+    if (S.scan) desk += '<div class="muted">Skanuojama… (' + esc(w.baseTools.scanner && S.levels.scanner === 0 ? w.baseTools.scanner : w.upgrades.scanner.levels[Math.max(0, S.levels.scanner - 1)].n) + ')</div>';
+    else if (!dg.scanned) desk += '<div class="muted">Dar nenuskanuotas. Stovėk už stalo ir spausk Tarpą.</div>';
+    else {
+      desk += '<ul class="items">' + (dg.scanResult.length ? dg.scanResult.map(r => '<li class="' + r.cls + '">' + esc(r.name) + (r.tag ? ' — ' + esc(r.tag) : '') + '</li>').join('') : '<li class="muted">Lagaminas tuščias</li>') + '</ul>';
+      if (!dg.scanResult.some(r => r.cls === 'bad')) desk += '<div class="muted" style="margin-top:4px">Pavojingų daiktų nerasta. Bet ar skeneris viską mato?</div>';
+    }
+  }
+  setHTML('desk', desk);
+
+  // veiksmai
+  const acts = getActions();
+  setHTML('actions', acts.map(a => '<button data-act="' + a.id + '" class="' + a.cls + '"' + (a.enabled ? '' : ' disabled') + '>' + esc(a.label) + '<kbd>' + a.key + '</kbd></button>').join('') || '<span class="muted">—</span>');
+
+  // taurės
+  setHTML('trophies', S.trophies.length ? S.trophies.map(t => '<span title="' + esc(t.world) + '"><svg width="28" height="32" viewBox="0 0 28 32"><path d="M5 2H23V10C23 17 18 20 14 20C10 20 5 17 5 10Z" fill="#f5c542" stroke="#8a5a00" stroke-width="2"/><rect x="11" y="20" width="6" height="6" fill="#d9a520"/><rect x="6" y="26" width="16" height="5" rx="1" fill="' + t.color + '" stroke="#5b3f2a"/></svg></span>').join('') : '<span class="empty">Kol kas tuščia. Patobulink viešbutį iki galo!</span>');
+
+  setHTML('log', S.log.map(m => '<div>• ' + esc(m) + '</div>').join(''));
+}
+
+/* =======================================================================
+   Įvestis
+   ======================================================================= */
+const KEY_ACTIONS = { Space: 'scan', KeyE: 'admit', Enter: 'admit', KeyX: 'refuse', KeyP: 'police', KeyR: 'rebuild', KeyU: 'shop' };
+window.addEventListener('keydown', e => {
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Enter'].includes(e.code)) e.preventDefault();
+  // kad sufokusuotas mygtukas nesuveiktų antrą kartą nuo Tarpo/Enter
+  if (document.activeElement && document.activeElement.tagName === 'BUTTON') document.activeElement.blur();
+  if (e.code === 'Escape') { if (S.mode === 'shop') closeShop(); return; }
+  if (S.mode === 'title' && (e.code === 'Enter' || e.code === 'Space')) { startGame(); return; }
+  if (S.mode === 'inspector' && S.insp && S.insp.arrived && (e.code === 'Enter' || e.code === 'Space')) { fly(); return; }
+  if (S.mode === 'gameover' && e.code === 'Enter') { retry(); return; }
+  if (CONFIG.debug && e.code === 'KeyM' && S.mode !== 'title') { addMoney(CONFIG.debugMoney); if (S.mode === 'shop') renderShop(); return; }
+  S.keys[e.code] = true;
+  if (!e.repeat && KEY_ACTIONS[e.code]) doAction(KEY_ACTIONS[e.code]);
+});
+window.addEventListener('keyup', e => { S.keys[e.code] = false; });
+window.addEventListener('blur', () => { S.keys = {}; });
+$('actions').addEventListener('click', e => { const b = e.target.closest('button[data-act]'); if (b) doAction(b.dataset.act); });
+$('shopGrid').addEventListener('click', e => { const b = e.target.closest('button[data-buy]'); if (b) buyUpgrade(b.dataset.buy); });
+$('btnShopClose').addEventListener('click', closeShop);
+$('btnStart').addEventListener('click', () => startGame());
+$('btnFly').addEventListener('click', () => fly());
+$('btnRetry').addEventListener('click', () => retry());
+
+function startGame() { if (S.mode !== 'title') return; sfx('coin'); loadWorld(0); }
+function retry() { if (S.mode !== 'gameover') return; loadWorld(S.worldIndex); log('Bandome dar kartą!'); }
+
+/* =======================================================================
+   Pagrindinis ciklas
+   ======================================================================= */
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  WALK = walkRects();
+  update(dt);
+  render();
+  panelTimer -= dt;
+  if (dirtyPanel || panelTimer <= 0) { renderPanel(); dirtyPanel = false; panelTimer = 0.12; }
+  requestAnimationFrame(frame);
+}
+// pradinė būsena (fone, kol rodomas titulinis langas)
+S.levels = newLevels(); S.rooms = buildRooms();
+S.paper = { wanted: null, order: null, spawned: false, next: null, status: 'none' };
+S.stats = { caught: 0, exploded: 0, guests: 0, earned: 0 };
+requestAnimationFrame(frame);
+
+// Testavimui / derinimui (konsolėje): window.GoldHotel
+window.GoldHotel = {
+  S, CONFIG, loadWorld, spawnGuest, explode,
+  give(n) { addMoney(n); if (S.mode === 'shop') renderShop(); },
+  forceNext(kind) { S.force = kind; S.spawnTimer = Math.min(S.spawnTimer, 0.1); }
+};
+</script>
+</body>
+</html>
