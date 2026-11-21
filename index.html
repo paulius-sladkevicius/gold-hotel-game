@@ -52,7 +52,9 @@
      dešinėje. Pinigai ir kambariai rodomi ir pačiame lauke (viršuje).
   10. Apsauga nuo netyčinio išėjimo: uždarant / perkraunant puslapį naršyklė
       paklausia; mygtukas „Atgal“ sustabdo žaidimą ir klausia „Ar tikrai išeiti?“.
-  11. Testavimui: atidarius su ?debug (pvz. index.html?debug) klavišas M
+  11. Visas ekranas: mygtukas „Visas ekranas“ / F arba „Pradėti per visą ekraną“.
+      Android telefone vaizdas pasukamas gulsčiai; iPhone Safari to neleidžia.
+  12. Testavimui: atidarius su ?debug (pvz. index.html?debug) klavišas M
      prideda pinigų. Konsolėje pasiekiama window.GoldHotel.
 
   VALDYMAS: ← / → — vaikščioti; ↑ / ↓ lifte — kitas aukštas; Tarpas — skanuoti;
@@ -138,6 +140,18 @@
   body.touch #actions button { min-height: 50px; font-size: 16px; padding: 10px 14px; flex: 1 1 auto; }
   .overlay { position: fixed; border-radius: 0; }
   #rotateHint { display: none; text-align: center; font-size: 13px; color: var(--muted); padding: 2px 0 6px; }
+  /* Visas ekranas */
+  #app:fullscreen { max-width: none; width: 100vw; height: 100vh; margin: 0; background: var(--bg); overflow: auto; }
+  #app:-webkit-full-screen { max-width: none; width: 100vw; height: 100vh; margin: 0; background: var(--bg); overflow: auto; }
+  #app:fullscreen > * { flex-grow: 0; flex-shrink: 0; }
+  #app:-webkit-full-screen > * { flex-grow: 0; flex-shrink: 0; }
+  @media (min-width: 981px) and (min-height: 561px) {
+    #app:fullscreen #stage { flex: none; width: min(calc(100vw - 356px), calc((100vh - 24px) * 1.6)); }
+    #app:-webkit-full-screen #stage { flex: none; width: min(calc(100vw - 356px), calc((100vh - 24px) * 1.6)); }
+    #app:fullscreen #side { max-height: calc(100vh - 24px); overflow-y: auto; }
+    #app:-webkit-full-screen #side { max-height: calc(100vh - 24px); overflow-y: auto; }
+  }
+  body.nofs .fs-only { display: none !important; }
 
   /* Siauri ekranai (telefonas stačiai, planšetė stačiai) */
   @media (max-width: 980px) {
@@ -198,6 +212,7 @@
           <b>← / →</b><span>vaikščioti</span>
           <b>↑ / ↓ (lifte)</b><span>važiuoti į kitą aukštą (liftas kairėje)</span>
           <b>Z</b><span>visas viešbutis / priartinti</span>
+          <b class="fs-only">F</b><span class="fs-only">žaisti per visą ekraną / išeiti</span>
           <b>Tarpas</b><span>skanuoti svečią prie stalo</span>
           <b>E / X</b><span>įleisti / neįleisti</span>
           <b>P</b><span>kviesti policiją (suima svečią šalia tavęs)</span>
@@ -206,7 +221,7 @@
         </div>
         <p><b>Pele, telefone ar planšetėje:</b> bakstelk ten, kur nori eiti (į kambarį bet kuriame aukšte, prie stalo), o veiksmus atlik dideliais mygtukais po žaidimo lauku.</p>
         <p class="muted">Blogiuką išduoda: laikraštis, skeneris, keista išvaizda ar elgesys ir įvykiai (tiksėjimas, sprogimas).</p>
-        <p><button id="btnStart" style="font-size:20px;padding:10px 26px">Pradėti</button></p>
+        <p><button id="btnStart" style="font-size:20px;padding:10px 26px">Pradėti</button> <button class="blue fs-only" id="btnStartFs" style="font-size:20px;padding:10px 26px">Pradėti per visą ekraną</button></p>
       </div>
     </div>
 
@@ -768,11 +783,13 @@ function getActions() {
   if (rt) acts.push({ id: 'rebuild', label: 'Atstatyti ' + rt.num + ' (' + rebuildCost() + ')', key: 'R', enabled: S.money >= rebuildCost(), cls: '' });
   acts.push({ id: 'shop', label: 'Tobulinimai (' + boughtUpgrades() + '/' + totalUpgrades() + ')', key: 'U', enabled: true, cls: '' });
   acts.push({ id: 'zoom', label: S.zoomOut ? 'Priartinti' : 'Visas viešbutis', key: 'Z', enabled: true, cls: 'blue' });
+  if (fsSupported()) acts.push({ id: 'fullscreen', label: fsElement() ? 'Išeiti iš viso ekrano' : 'Visas ekranas', key: 'F', enabled: true, cls: '' });
   return acts;
 }
 function rebuildCost() { return Math.round(bal().rebuildCost * lapMult()); }
 
 function doAction(id) {
+  if (id === 'fullscreen') { toggleFullscreen(); return; }
   if (S.mode === 'shop' && id === 'shop') { closeShop(); return; }
   if (S.mode !== 'play') return;
   const a = getActions().find(x => x.id === id);
@@ -1171,6 +1188,14 @@ function gameOver() {
    Piešimas
    ======================================================================= */
 const cv = $('game'), ctx = cv.getContext('2d');
+// Canvas piešiamas tikra ekrano raiška (ryšku per visą ekraną ir telefonuose); logika lieka 960×600.
+let K = 1;
+function fitCanvas() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const w = clamp(Math.round((cv.clientWidth || W) * dpr), 320, 2560), h = Math.round(w * H / W);
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  K = cv.width / W;
+}
 
 function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
 
@@ -1672,14 +1697,14 @@ function drawFlight() {
 }
 
 function render() {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(K, 0, 0, K, 0, 0);
   if (S.mode === 'flight') { drawFlight(); return; }
   ctx.fillStyle = world().palette.sky || '#9ed8ff'; ctx.fillRect(0, 0, W, H);
   const c = S.cam || camTarget();
   let shx = 0, shy = 0;
   if (S.shake > 0) { shx = rand(-6, 6) * S.shake; shy = rand(-6, 6) * S.shake; }
   // pasaulis (su kamera)
-  ctx.setTransform(c.z, 0, 0, c.z, -c.x * c.z + shx, -c.y * c.z + shy);
+  ctx.setTransform(c.z * K, 0, 0, c.z * K, (-c.x * c.z + shx) * K, (-c.y * c.z + shy) * K);
   drawWorld();
   drawGuests();
   drawPolice();
@@ -1692,7 +1717,7 @@ function render() {
     ctx.beginPath(); ctx.ellipse(S.tapMark.x, S.tapMark.y + 20, 8 + f * 16, 3 + f * 5, 0, 0, 7); ctx.stroke();
   }
   // ekrano sluoksnis (be kameros)
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(K, 0, 0, K, 0, 0);
   drawHud();
   if (S.banner && S.mode === 'play') {
     const a = clamp(Math.min(S.banner.t * 4, (4.5 - S.banner.t) * 2), 0, 1), big = S.touch;
@@ -1819,7 +1844,7 @@ function renderPanel() {
 /* =======================================================================
    Įvestis
    ======================================================================= */
-const KEY_ACTIONS = { Space: 'scan', KeyE: 'admit', Enter: 'admit', KeyX: 'refuse', KeyP: 'police', KeyR: 'rebuild', KeyU: 'shop', KeyZ: 'zoom' };
+const KEY_ACTIONS = { Space: 'scan', KeyE: 'admit', Enter: 'admit', KeyX: 'refuse', KeyP: 'police', KeyR: 'rebuild', KeyU: 'shop', KeyZ: 'zoom', KeyF: 'fullscreen' };
 window.addEventListener('keydown', e => {
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Enter'].includes(e.code)) e.preventDefault();
   // kad sufokusuotas mygtukas nesuveiktų antrą kartą nuo Tarpo/Enter
@@ -1856,6 +1881,31 @@ $('btnStart').addEventListener('click', () => startGame());
 $('btnFly').addEventListener('click', () => fly());
 $('btnRetry').addEventListener('click', () => retry());
 $('btnStay').addEventListener('click', () => stayInGame());
+$('btnStartFs').addEventListener('click', () => { toggleFullscreen(); startGame(); });
+
+/* =======================================================================
+   Visas ekranas (Fullscreen API). Per visą ekraną rodomas visas žaidimas
+   su mygtukais. Telefone (Android) vaizdas pasukamas gulsčiai.
+   iPhone Safari svetainėms visą ekraną draudžia — ten mygtukas nerodomas.
+   ======================================================================= */
+const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+const fsSupported = () => !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+function toggleFullscreen() {
+  if (!fsSupported()) return;
+  try {
+    if (fsElement()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    const app = $('app'), req = app.requestFullscreen || app.webkitRequestFullscreen;
+    const r = req.call(app, { navigationUI: 'hide' });
+    if (r && r.then) r.then(lockLandscape).catch(() => log('Naršyklė neleido įjungti viso ekrano.')); else lockLandscape();
+  } catch (e) { log('Naršyklė neleido įjungti viso ekrano.'); }
+}
+function lockLandscape() {
+  try {
+    if (S.touch && screen.orientation && screen.orientation.lock && Math.min(screen.width, screen.height) < 600) screen.orientation.lock('landscape').catch(() => {});
+  } catch (e) { /* nebūtina */ }
+}
+['fullscreenchange', 'webkitfullscreenchange'].forEach(ev => document.addEventListener(ev, () => { dirtyPanel = true; S.keys = {}; }));
+if (!fsSupported()) document.body.classList.add('nofs');
 $('btnLeave').addEventListener('click', () => leaveGame());
 
 function startGame() { if (S.mode !== 'title') return; sfx('coin'); loadWorld(0); guardBack(); }
@@ -1908,6 +1958,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   update(dt);
   updateCamera(dt);
+  fitCanvas();
   render();
   panelTimer -= dt;
   if (dirtyPanel || panelTimer <= 0) { renderPanel(); dirtyPanel = false; panelTimer = 0.12; }
