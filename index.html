@@ -120,6 +120,7 @@
   .pip { width: 12px; height: 12px; border-radius: 3px; background: #2a1d3a; border: 1px solid #7a6a90; }
   .pip.on { background: var(--gold); border-color: var(--gold); }
   .upg .d { font-size: 13px; color: var(--muted); margin: 3px 0 6px; }
+  .upg .d .up { color: var(--green); font-weight: bold; }
   .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 14px; margin: 8px 0; }
   /* --- Lietimas / telefonai / planšetės --- */
   html, body { -webkit-tap-highlight-color: transparent; }
@@ -539,7 +540,7 @@ function loadWorld(i) {
   S.rooms = buildRooms();
   S.guests = []; S.queue = []; S.effects = []; S.floaters = []; S.police = [];
   S.player = { x: GEO.playerStart.x, y: GEO.playerStart.y, stun: 0, face: 1, walk: 0 };
-  S.spawnTimer = 2; S.scan = null; S.insp = null; S.flight = null; S.shake = 0; S.route = null; S.tapMark = null;
+  S.spawnTimer = 2; S.scan = null; S.insp = null; S.flight = null; S.shake = 0; S.route = null; S.tapMark = null; S.banner = null;
   S.paper = { wanted: null, order: null, spawned: false, next: CONFIG.newspaper.firstIssue, status: 'none', guestId: null };
   S.stats = { caught: 0, exploded: 0, guests: 0, earned: 0 };
   S.mode = 'play';
@@ -786,6 +787,22 @@ function startScan() {
   S.scan = { guest: g, t: 0, dur: CONFIG.upgrades.scanner.time[S.levels.scanner] };
   sfx('scan');
 }
+/* Tobulinimų efektai žmonių kalba (skaičiai imami iš CONFIG) */
+function toolName(slot, lv) { if (lv === undefined) lv = S.levels[slot]; return lv === 0 ? (world().baseTools[slot] || 'Pradinis lygis') : world().upgrades[slot].levels[lv - 1].n; }
+function securityStealth(secSum) { return clamp((bal().stealth + secSum * CONFIG.difficulty.securityStealthAdd) * lapMult(), 0, 0.85); }
+function scanChance(lv, secSum) { return clamp(CONFIG.upgrades.scanner.detect[lv] - securityStealth(secSum), 0.05, 0.98); }
+function effectText(slot, lv) {
+  const U = CONFIG.upgrades, b = bal(), sec = securityLevelSum() + (lv - S.levels[slot]);
+  switch (slot) {
+    case 'price': return 'kambarys kainuoja ' + Math.round(b.roomPrice * (1 + U.price.bonus[lv]) / lapMult());
+    case 'traffic': { const si = (b.spawnInterval[0] + b.spawnInterval[1]) / 2 * U.traffic.spawnMult[lv]; return 'svečias kas ~' + si.toFixed(1) + ' s, turtingų ' + Math.round(U.traffic.rich[lv] * 100) + '%'; }
+    case 'comfort': return 'svečiai laukia ' + (CONFIG.guest.patience + U.comfort.patience[lv]) + ' s' + (U.comfort.tip[lv] ? ', arbatpinigiai +' + U.comfort.tip[lv] : ', be arbatpinigių');
+    case 'scanner': return 'randa ~' + Math.round(scanChance(lv, sec) * 100) + '% paslėptų daiktų, skanuoja ' + U.scanner.time[lv] + ' s, ' + (U.scanner.identifySus[lv] ? 'atpažįsta nekaltus daiktus' : 'nekaltų „įtartinų“ daiktų neatpažįsta');
+    case 'vision': { const r = U.vision.range[lv]; return r >= 9999 ? 'matai visus kambarius ir bombų laikmačius' : r > 0 ? 'kambario vidų matai iš koridoriaus prie durų' : 'kambario vidų matai tik užėjęs'; }
+    case 'intel': return 'laikraštyje ' + U.intel.traits[lv] + ' iš 4 požymių';
+  }
+  return '';
+}
 function finishScan() {
   const g = S.scan.guest; S.scan = null;
   const detect = clamp(CONFIG.upgrades.scanner.detect[S.levels.scanner] - g.stealth, 0.05, 0.98);
@@ -794,10 +811,10 @@ function finishScan() {
   g.scanResult = g.items.map(it => {
     if (it.bad) {
       const found = g.pocket || Math.random() < detect;
-      return found ? { name: it.name, kind: it.kind, cls: 'bad', tag: 'PAVOJINGA!' } : null;
+      return found ? { name: it.name, kind: it.kind, cls: 'bad', tag: g.pocket ? 'PAVOJINGA! (kyšo iš kišenės)' : 'PAVOJINGA! (rado: ' + toolName('scanner') + ')' } : null;
     }
-    if (it.sus && !identify) return { name: 'Neaiškus daiktas', kind: it.kind, cls: 'sus', tag: 'įtartina?' };
-    if (it.sus) return { name: it.name, kind: it.kind, cls: 'ok', tag: 'nepavojinga' };
+    if (it.sus && !identify) return { name: 'Neaiškus daiktas', kind: it.kind, cls: 'sus', tag: 'įtartina? (' + toolName('scanner') + ' neatpažįsta)' };
+    if (it.sus) return { name: it.name, kind: it.kind, cls: 'ok', tag: 'nepavojinga (atpažino: ' + toolName('scanner') + ')' };
     return { name: it.name, kind: it.kind, cls: 'ok', tag: '' };
   }).filter(Boolean);
   if (g.scanResult.some(r => r.cls === 'bad')) { sfx('bad'); log('Skeneris pypsi: rastas pavojingas daiktas!'); }
@@ -905,6 +922,7 @@ function update(dt) {
   if (S.mode !== 'play') return;
 
   updatePlayer(dt);
+  if (S.banner) { S.banner.t += dt; if (S.banner.t > 4.5) S.banner = null; }
 
   // svečių atvykimas
   S.spawnTimer -= dt;
@@ -1082,23 +1100,25 @@ function buyUpgrade(slot) {
   const lv = world().upgrades[slot].levels[S.levels[slot]];
   S.levels[slot]++;
   sfx('buy');
-  log('Nupirkta: ' + lv.n + '!');
+  const eff = effectText(slot, S.levels[slot]);
+  log('Įrengta: ' + lv.n + ' — dabar ' + eff + '.');
+  S.banner = { title: lv.n + ' — įrengta!', text: 'Dabar ' + eff, t: 0 };
   dirtyPanel = true;
   if (boughtUpgrades() >= totalUpgrades()) { renderShop(); $('ovShop').classList.remove('show'); startInspector(); return; }
   renderShop();
 }
 function renderShop() {
   $('shopMoney').innerHTML = S.money + '<span class="coin"></span>';
-  $('shopProgress').textContent = 'Nupirkta ' + boughtUpgrades() + ' iš ' + totalUpgrades() + '. Nupirkus viską atvyks inspektorius! Gražesnis viešbutis pritraukia daugiau blogiukų, o geresni įrankiai — gudresnių.';
+  $('shopProgress').textContent = 'Nupirkta ' + boughtUpgrades() + ' iš ' + totalUpgrades() + '. Nupirkus viską atvyks inspektorius! Kiekvienas viešbučio tobulinimas atveda ~' + Math.round(CONFIG.difficulty.hotelBaddieAdd * 100) + '% daugiau blogiukų, o kiekvienas saugumo tobulinimas daro juos gudresnius: skeneris tada randa ~' + Math.round(CONFIG.difficulty.securityStealthAdd * 100) + '% mažiau.';
   const col = (title, slots) => '<div class="shop-col"><h3>' + title + '</h3>' + slots.map(slot => {
     const u = world().upgrades[slot], lv = S.levels[slot], max = u.levels.length;
     const pips = Array.from({ length: max }, (_, i) => '<span class="pip' + (i < lv ? ' on' : '') + '"></span>').join('');
     const cur = lv === 0 ? (world().baseTools[slot] || 'Pradinis lygis') : u.levels[lv - 1].n;
     let body;
-    if (lv >= max) body = '<div class="d">Dabar: ' + esc(cur) + '</div><button disabled>Maksimalus lygis</button>';
+    if (lv >= max) body = '<div class="d">Dabar: <b>' + esc(cur) + '</b><br>' + esc(effectText(slot, lv)) + '</div><button disabled>Maksimalus lygis</button>';
     else {
       const nx = u.levels[lv], c = upgradeCost(slot);
-      body = '<div class="d">Dabar: ' + esc(cur) + '<br>Toliau: <b>' + esc(nx.n) + '</b> — ' + esc(nx.d) + '</div>' +
+      body = '<div class="d">Dabar: ' + esc(cur) + ' — ' + esc(effectText(slot, lv)) + '<br>Toliau: <b>' + esc(nx.n) + '</b> — <span class="up">' + esc(effectText(slot, lv + 1)) + '</span></div>' +
         '<button data-buy="' + slot + '"' + (S.money < c ? ' disabled' : '') + '>Pirkti už ' + c + '</button>';
     }
     return '<div class="upg"><span class="t">' + esc(u.title) + '</span><span class="pips">' + pips + '</span>' + body + '</div>';
@@ -1362,6 +1382,22 @@ function drawWorld() {
   ctx.fillStyle = scanLv >= 2 ? '#74b9ff' : scanLv >= 1 ? '#55efc4' : '#95a5a6'; rr(D.x + 5, D.y + 36, 18, 28, 4); ctx.fill();
   ctx.fillStyle = S.scan ? ((Math.floor(S.time * 10) % 2) ? '#ff7675' : '#ffeaa7') : '#2d3436'; ctx.fillRect(D.x + 8, D.y + 40, 12, 8);
   ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(D.x + 14, D.y + 14, 4, 0, 7); ctx.fill(); // skambutis
+  if (scanLv >= 1) { // rankinis skeneris su antena
+    ctx.strokeStyle = '#2d3436'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(D.x + 20, D.y + 36); ctx.lineTo(D.x + 26, D.y + 24); ctx.stroke();
+    ctx.fillStyle = (Math.floor(S.time * 3) % 2) ? '#55efc4' : '#00b894'; ctx.beginPath(); ctx.arc(D.x + 26, D.y + 23, 3, 0, 7); ctx.fill();
+  }
+  if (scanLv >= 2) { // rentgeno vartai prie įėjimo
+    const gx = GEO.front.x, glow = S.scan ? 0.55 + 0.35 * Math.sin(S.time * 20) : 0.25;
+    ctx.fillStyle = 'rgba(116,185,255,' + glow + ')'; ctx.fillRect(gx - 20, 262, 40, 50);
+    ctx.fillStyle = '#4a69bd'; ctx.fillRect(gx - 26, 252, 6, 62); ctx.fillRect(gx + 20, 252, 6, 62); ctx.fillRect(gx - 26, 248, 52, 8);
+    text('RENTGENAS', gx, 244, { size: 9, color: '#dfe9ff', stroke: '#1e2a55', lw: 3 });
+  }
+  if (S.levels.vision >= 2) { // kameros koridoriuje
+    for (const cx of [330, 560, 790, 920]) {
+      ctx.fillStyle = '#2d3436'; rr(cx - 9, 262, 18, 10, 3); ctx.fill(); ctx.fillRect(cx - 2, 270, 4, 4);
+      ctx.fillStyle = (Math.floor(S.time * 2 + cx) % 2) ? '#ff3030' : '#661010'; ctx.beginPath(); ctx.arc(cx + 5, 267, 2, 0, 7); ctx.fill();
+    }
+  }
   // laikraštis ant stalo
   ctx.fillStyle = '#f3ead2'; ctx.fillRect(D.x + 6, D.y + 74, 16, 18); ctx.fillStyle = '#555'; ctx.fillRect(D.x + 8, D.y + 77, 12, 2); ctx.fillRect(D.x + 8, D.y + 82, 9, 1.5); ctx.fillRect(D.x + 8, D.y + 86, 11, 1.5);
   // zonos ženklas už stalo
@@ -1515,6 +1551,10 @@ function drawPlayer() {
   drawPerson(p.x, p.y, { shirt: '#f5c542', skin: '#ffdbac', hat: 'tophat', hatColor: '#1e1e1e', face: 'happy', role: 'player',
     walk: p.moving ? p.walk : 0,
     stun: p.stun > 0, soot: p.soot > 0, legs: '#2d2d44' });
+  if (S.levels.vision === 1 && !p.stun) { // žiūronai ant kaklo
+    ctx.fillStyle = '#2d3436'; ctx.beginPath(); ctx.arc(p.x - 4, p.y + 2, 3.2, 0, 7); ctx.arc(p.x + 4, p.y + 2, 3.2, 0, 7); ctx.fill();
+    ctx.fillStyle = '#74b9ff'; ctx.beginPath(); ctx.arc(p.x - 4, p.y + 2, 1.5, 0, 7); ctx.arc(p.x + 4, p.y + 2, 1.5, 0, 7); ctx.fill();
+  }
   if (p.stun > 0) for (let i = 0; i < 3; i++) { const a = S.time * 5 + i * 2.1; text('★', p.x + Math.cos(a) * 14, p.y - 46 + Math.sin(a) * 4, { size: 11, color: '#ffd84a' }); }
 }
 function drawPolice() {
@@ -1580,6 +1620,17 @@ function render() {
     ctx.beginPath(); ctx.ellipse(S.tapMark.x, S.tapMark.y + 18, 8 + f * 16, 4 + f * 7, 0, 0, 7); ctx.stroke();
   }
   drawHud();
+  if (S.banner && S.mode === 'play') {
+    const a = clamp(Math.min(S.banner.t * 4, (4.5 - S.banner.t) * 2), 0, 1), big = S.touch;
+    ctx.globalAlpha = a;
+    ctx.font = 'bold ' + (big ? 20 : 15) + 'px "Trebuchet MS", sans-serif';
+    const bw = Math.min(W - 40, Math.max(ctx.measureText(S.banner.text).width, 200) + 40), bh = big ? 70 : 54, by = 120;
+    ctx.fillStyle = 'rgba(20,12,30,0.88)'; rr(W / 2 - bw / 2, by, bw, bh, 12); ctx.fill();
+    ctx.strokeStyle = '#f5c542'; ctx.lineWidth = 2; rr(W / 2 - bw / 2, by, bw, bh, 12); ctx.stroke();
+    text(S.banner.title, W / 2, by + bh * 0.32, { size: big ? 22 : 17, color: '#ffe066' });
+    text(S.banner.text, W / 2, by + bh * 0.72, { size: big ? 18 : 14, color: '#b6ffb0' });
+    ctx.globalAlpha = 1;
+  }
   // apatinė užuomina
   if (S.mode === 'play') {
     const hint = contextHint();
@@ -1648,14 +1699,15 @@ function renderPanel() {
   // registratūra
   const dg = deskGuest();
   let desk = '';
-  if (!dg) desk = '<span class="muted">Prie stalo nieko nėra. Eilėje: ' + S.queue.length + '.</span>';
+  desk = '<div class="muted" style="margin-bottom:4px">Skeneris: <b style="color:var(--ink)">' + esc(toolName('scanner')) + '</b> — ' + esc(effectText('scanner', S.levels.scanner)) + '</div>';
+  if (!dg) desk += '<span class="muted">Prie stalo nieko nėra. Eilėje: ' + S.queue.length + '.</span>';
   else {
-    desk = '<div>Prie stalo laukia svečias' + (dg.rich ? ' <span style="color:var(--gold)">(turtingas)</span>' : '') + '. Eilėje: ' + S.queue.length + '.</div>';
-    if (S.scan) desk += '<div class="muted">Skanuojama… (' + esc(w.baseTools.scanner && S.levels.scanner === 0 ? w.baseTools.scanner : w.upgrades.scanner.levels[Math.max(0, S.levels.scanner - 1)].n) + ')</div>';
+    desk += '<div>Prie stalo laukia svečias' + (dg.rich ? ' <span style="color:var(--gold)">(turtingas)</span>' : '') + '. Eilėje: ' + S.queue.length + '.</div>';
+    if (S.scan) desk += '<div class="muted">Skanuojama… (' + esc(toolName('scanner')) + ')</div>';
     else if (!dg.scanned) desk += '<div class="muted">Dar nenuskanuotas. Stovėk už stalo ir spausk Tarpą.</div>';
     else {
       desk += '<ul class="items">' + (dg.scanResult.length ? dg.scanResult.map(r => '<li class="' + r.cls + '">' + esc(r.name) + (r.tag ? ' — ' + esc(r.tag) : '') + '</li>').join('') : '<li class="muted">Lagaminas tuščias</li>') + '</ul>';
-      if (!dg.scanResult.some(r => r.cls === 'bad')) desk += '<div class="muted" style="margin-top:4px">Pavojingų daiktų nerasta. Bet ar skeneris viską mato?</div>';
+      if (!dg.scanResult.some(r => r.cls === 'bad')) desk += '<div class="muted" style="margin-top:4px">Pavojingų daiktų nerasta. Bet skeneris randa tik ~' + Math.round(scanChance(S.levels.scanner, securityLevelSum()) * 100) + '% paslėptų — stebėk išvaizdą ir laikraštį.</div>';
     }
   }
   setHTML('desk', desk);
@@ -1734,7 +1786,8 @@ requestAnimationFrame(frame);
 window.GoldHotel = {
   S, CONFIG, loadWorld, spawnGuest, explode,
   give(n) { addMoney(n); if (S.mode === 'shop') renderShop(); },
-  forceNext(kind) { S.force = kind; S.spawnTimer = Math.min(S.spawnTimer, 0.1); }
+  forceNext(kind) { S.force = kind; S.spawnTimer = Math.min(S.spawnTimer, 0.1); },
+  _finishScan() { finishScan(); }
 };
 </script>
 </body>
