@@ -2,7 +2,10 @@
 <html lang="lt">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2b1d3a">
 <title>Gold Hotel</title>
 <!--
 ==========================================================================
@@ -39,7 +42,11 @@
      Nupirkus viską atvyksta inspektorius su taure, ir prasideda kitas
      pasaulis nuo 0 pinigų. Po paskutinio pasaulio ratas kartojasi sunkiau.
   8. Pradedama su 0 pinigų (CONFIG.startMoney).
-  9. Testavimui: atidarius su ?debug (pvz. index.html?debug) klavišas M
+  9. Telefonas / planšetė: bakstelėjus žaidimo lauke veikėjas pats nueina
+     ten (koridoriumi, pro duris, aplink stalą); veiksmai — dideliais
+     mygtukais po lauku. Gulsčiai telefone laukas per visą aukštį, mygtukai
+     dešinėje. Pinigai ir kambariai rodomi ir pačiame lauke (viršuje).
+  10. Testavimui: atidarius su ?debug (pvz. index.html?debug) klavišas M
      prideda pinigų. Konsolėje pasiekiama window.GoldHotel.
 
   VALDYMAS: rodyklės / WASD — vaikščioti; Tarpas — skanuoti; E — įleisti;
@@ -114,16 +121,64 @@
   .pip.on { background: var(--gold); border-color: var(--gold); }
   .upg .d { font-size: 13px; color: var(--muted); margin: 3px 0 6px; }
   .keys { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 14px; margin: 8px 0; }
+  /* --- Lietimas / telefonai / planšetės --- */
+  html, body { -webkit-tap-highlight-color: transparent; }
+  body { touch-action: manipulation; }
+  canvas { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  button { touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+  body.touch kbd { display: none; }
+  body.touch #actions button { min-height: 50px; font-size: 16px; padding: 10px 14px; flex: 1 1 auto; }
+  .overlay { position: fixed; border-radius: 0; }
+  #rotateHint { display: none; text-align: center; font-size: 13px; color: var(--muted); padding: 2px 0 6px; }
+
+  /* Siauri ekranai (telefonas stačiai, planšetė stačiai) */
   @media (max-width: 980px) {
-    #app { flex-direction: column; }
-    #side { width: 100%; flex: none; }
+    #app { flex-direction: column; padding: 6px; gap: 8px; align-items: stretch; }
+    #side { width: 100%; flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    #side .card { padding: 8px 10px; }
+    #cardStats { display: none; }           /* pinigai rodomi pačiame žaidimo lauke */
+    #cardActions { grid-column: 1 / -1; order: -1; }
+    #cardTrophies, #cardLog { grid-column: span 1; }
     .shop-grid { grid-template-columns: 1fr; }
+    canvas { border-radius: 10px; }
+    .dialog { padding: 14px; }
+    .dialog h1 { font-size: 28px; }
+  }
+  @media (max-width: 600px) and (orientation: portrait) {
+    #rotateHint { display: block; }
+    #side { grid-template-columns: 1fr; }
+    #cardTrophies, #cardLog { grid-column: 1 / -1; }
+    .paper ul, .items { font-size: 13px; }
+  }
+  /* Telefonas gulsčiai: laukas užima visą aukštį, valdymas dešinėje */
+  @media (orientation: landscape) and (max-height: 560px) {
+    #app { flex-direction: row; padding: 6px; gap: 8px; align-items: flex-start; max-width: none; }
+    #stage { flex: none; width: min(calc(100vw - 252px), calc((100vh - 12px) * 1.6)); width: min(calc(100vw - 252px), calc((100dvh - 12px) * 1.6)); }
+    #side { width: 232px; flex: none; display: flex; flex-direction: column; gap: 6px; max-height: calc(100vh - 12px); max-height: calc(100dvh - 12px); overflow-y: auto; }
+    #cardStats { display: none; }
+    #cardActions { order: -1; }
+    #side .card { padding: 6px 8px; }
+    #side .card h3 { font-size: 12px; margin-bottom: 4px; }
+    body.touch #actions button { min-height: 44px; font-size: 14px; padding: 8px 10px; width: 100%; }
+    .paper { padding: 5px 8px; }
+    .paper .hd { font-size: 12px; }
+    .paper ul, .items { font-size: 12px; }
+    #log { max-height: 70px; }
+    .dialog { padding: 10px 14px; }
+    .dialog h1 { font-size: 24px; }
+    .keys { font-size: 12px; }
+    .shop-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .upg { padding: 6px 8px; margin-bottom: 6px; }
+    .upg .d { font-size: 12px; margin: 2px 0 4px; }
+    .shop-col h3 { font-size: 15px; margin-bottom: 4px; }
+    #shopProgress { font-size: 12px; margin: 2px 0; }
   }
 </style>
 </head>
 <body>
 <div id="app">
   <div id="stage">
+    <div id="rotateHint">Patogiau žaisti pasukus telefoną gulsčiai ↻</div>
     <canvas id="game" width="960" height="600"></canvas>
 
     <div class="overlay show" id="ovTitle">
@@ -139,6 +194,7 @@
           <b>R</b><span>atstatyti susprogusį kambarį (stovint prie jo durų)</span>
           <b>U</b><span>tobulinimai</span>
         </div>
+        <p><b>Telefone ar planšetėje:</b> bakstelk ten, kur nori eiti (į kambarį, koridorių, prie stalo), o veiksmus atlik dideliais mygtukais po žaidimo lauku.</p>
         <p class="muted">Blogiuką išduoda: laikraštis, skeneris, keista išvaizda ar elgesys ir įvykiai (tiksėjimas, sprogimas).</p>
         <p><button id="btnStart" style="font-size:20px;padding:10px 26px">Pradėti</button></p>
       </div>
@@ -146,7 +202,7 @@
 
     <div class="overlay" id="ovShop">
       <div class="dialog">
-        <div class="row"><h2 style="margin:0">Tobulinimai</h2><span id="shopMoney" class="big"></span></div>
+        <div class="row"><h2 style="margin:0">Tobulinimai</h2><span style="display:flex;align-items:center;gap:10px"><span id="shopMoney" class="big"></span><button class="blue" id="btnShopX" aria-label="Uždaryti">✕</button></span></div>
         <p class="muted" id="shopProgress"></p>
         <div class="shop-grid" id="shopGrid"></div>
         <p class="center"><button class="blue" id="btnShopClose">Uždaryti <kbd>Esc</kbd></button></p>
@@ -173,7 +229,7 @@
   </div>
 
   <div id="side">
-    <div class="card">
+    <div class="card" id="cardStats">
       <div class="row"><span id="worldName" style="font-weight:bold;color:var(--gold2)"></span><span class="muted" id="lapInfo"></span></div>
       <div class="row" style="margin-top:4px"><span>Pinigai</span><span class="big"><span id="money">0</span><span class="coin"></span></span></div>
       <div class="row"><span>Kambariai</span><span id="roomsInfo"></span></div>
@@ -186,15 +242,15 @@
       <h3>Registratūra</h3>
       <div id="desk"></div>
     </div>
-    <div class="card">
+    <div class="card" id="cardActions">
       <h3>Veiksmai</h3>
       <div id="actions"></div>
     </div>
-    <div class="card">
+    <div class="card" id="cardTrophies">
       <h3>Taurių lentyna</h3>
       <div id="trophies"></div>
     </div>
-    <div class="card">
+    <div class="card" id="cardLog">
       <h3>Žinutės</h3>
       <div id="log"></div>
     </div>
@@ -483,7 +539,7 @@ function loadWorld(i) {
   S.rooms = buildRooms();
   S.guests = []; S.queue = []; S.effects = []; S.floaters = []; S.police = [];
   S.player = { x: GEO.playerStart.x, y: GEO.playerStart.y, stun: 0, face: 1, walk: 0 };
-  S.spawnTimer = 2; S.scan = null; S.insp = null; S.flight = null; S.shake = 0;
+  S.spawnTimer = 2; S.scan = null; S.insp = null; S.flight = null; S.shake = 0; S.route = null; S.tapMark = null;
   S.paper = { wanted: null, order: null, spawned: false, next: CONFIG.newspaper.firstIssue, status: 'none', guestId: null };
   S.stats = { caught: 0, exploded: 0, guests: 0, earned: 0 };
   S.mode = 'play';
@@ -923,6 +979,7 @@ function update(dt) {
 function updatePlayer(dt) {
   const p = S.player;
   if (p.soot) p.soot = Math.max(0, p.soot - dt);
+  p.moving = false;
   if (p.stun > 0) { p.stun -= dt; return; }
   let mx = 0, my = 0;
   const k = S.keys;
@@ -930,7 +987,10 @@ function updatePlayer(dt) {
   if (k.ArrowRight || k.KeyD) mx += 1;
   if (k.ArrowUp || k.KeyW) my -= 1;
   if (k.ArrowDown || k.KeyS) my += 1;
+  if (mx || my) S.route = null; // klaviatūra nutraukia bakstelėjimo maršrutą
+  else if (S.route) { followRoute(dt); return; }
   if (mx || my) {
+    p.moving = true;
     const l = Math.hypot(mx, my), sp = CONFIG.player.speed * dt;
     const nx = p.x + mx / l * sp, ny = p.y + my / l * sp;
     if (canStand(nx, p.y)) p.x = nx;
@@ -939,7 +999,64 @@ function updatePlayer(dt) {
     p.walk += dt * 12;
   }
 }
+/* --- Judėjimas bakstelėjimu (telefonas / planšetė / pelė) --- */
+function roomAtPoint(q) { return S.rooms.find(r => inRect(q.x, q.y, r.inner) || inRect(q.x, q.y, r.door)) || null; }
+const DESK_SPOT = { x: 192, y: 300 };
+function lobbyPath(a, b) {
+  // aplink registratūros stalą (x 126–154, y 250–350)
+  const left = q => q.x < 140, bandY = q => q.y > 226 && q.y < 374;
+  if (left(a) !== left(b) && (bandY(a) || bandY(b) || (a.y < 250) !== (b.y < 250))) {
+    const dy = (a.y + b.y) / 2 < 300 ? 218 : 384;
+    return [{ x: a.x, y: dy }, { x: b.x, y: dy }, b];
+  }
+  return [b];
+}
+function buildRoute(t) {
+  const p = S.player, pts = [];
+  const pr = roomAtPoint(p), tr = t.room || null;
+  if (pr && pr === tr) return [{ x: t.x, y: t.y }];
+  const inLobby = q => q.x < 250;
+  let cur = { x: p.x, y: p.y };
+  if (pr) { pts.push({ x: pr.doorC.x, y: p.y }, { x: pr.doorC.x, y: 300 }); cur = { x: pr.doorC.x, y: 300 }; }
+  if (inLobby(cur) && !inLobby(t)) { pts.push(...lobbyPath(cur, { x: 240, y: 300 })); cur = { x: 240, y: 300 }; }
+  if (!inLobby(cur) && inLobby(t)) { pts.push({ x: Math.max(cur.x, 270), y: 300 }, { x: 240, y: 300 }); cur = { x: 240, y: 300 }; }
+  if (inLobby(t)) pts.push(...lobbyPath(cur, { x: t.x, y: t.y }));
+  else if (tr) {
+    pts.push({ x: tr.doorC.x, y: 300 });
+    pts.push({ x: tr.doorC.x, y: tr.top ? Math.min(t.y, tr.doorC.y - 24) : Math.max(t.y, tr.doorC.y + 24) });
+    pts.push({ x: t.x, y: t.y });
+  } else pts.push({ x: t.x, y: t.y });
+  return pts;
+}
+function tapMove(x, y) {
+  let t;
+  const room = S.rooms.find(r => inRect(x, y, { x: r.x, y: r.y, w: r.w, h: r.h }));
+  if (room) t = { x: clamp(x, room.inner.x + 16, room.inner.x + room.inner.w - 16), y: clamp(y, room.inner.y + 16, room.inner.y + room.inner.h - 16), room };
+  else if (x >= GEO.corridor.x - 6 && y >= GEO.corridor.y - 12 && y <= GEO.corridor.y + GEO.corridor.h + 12) t = { x: clamp(x, 272, 926), y: clamp(y, 274, 326) };
+  else if (x < 60 || (x < 170 && y > 200 && y < 400)) t = { x: DESK_SPOT.x, y: DESK_SPOT.y }; // stalas, eilė, gatvė → prie stalo
+  else t = { x: clamp(x, 82, 238), y: clamp(y, 62, 538) };
+  if (!t.room && inRect(t.x, t.y, { x: GEO.desk.x - 16, y: GEO.desk.y - 16, w: GEO.desk.w + 32, h: GEO.desk.h + 32 })) t = { x: DESK_SPOT.x, y: DESK_SPOT.y };
+  S.route = buildRoute(t); S.routeStuck = 0;
+  S.tapMark = { x: t.x, y: t.y, t: 0 };
+}
+function followRoute(dt) {
+  const p = S.player, wp = S.route[0];
+  const dx = wp.x - p.x, dy = wp.y - p.y, d = Math.hypot(dx, dy);
+  if (d < 3) { S.route.shift(); if (!S.route.length) S.route = null; return; }
+  const sp = Math.min(d, CONFIG.player.speed * dt);
+  const nx = p.x + dx / d * sp, ny = p.y + dy / d * sp, ox = p.x, oy = p.y;
+  if (canStand(nx, ny)) { p.x = nx; p.y = ny; }
+  else { if (canStand(nx, p.y)) p.x = nx; if (canStand(p.x, ny)) p.y = ny; }
+  if (Math.abs(dx) > 1) p.face = dx > 0 ? 1 : -1;
+  p.walk += dt * 12; p.moving = true;
+  if (Math.hypot(p.x - ox, p.y - oy) < 0.01) {
+    S.routeStuck = (S.routeStuck || 0) + dt;
+    if (S.routeStuck > 0.25) { S.route.shift(); S.routeStuck = 0; if (!S.route.length) S.route = null; }
+  } else S.routeStuck = 0;
+}
+
 function updateEffects(dt) {
+  if (S.tapMark) { S.tapMark.t += dt; if (S.tapMark.t > 0.8) S.tapMark = null; }
   for (const e of S.effects) {
     e.t += dt;
     if (e.type === 'spark') { e.x += e.vx * dt; e.y += e.vy * dt; e.vx *= 0.94; e.vy *= 0.94; }
@@ -990,7 +1107,7 @@ function renderShop() {
 }
 
 function startInspector() {
-  S.mode = 'inspector'; S.scan = null;
+  S.mode = 'inspector'; S.scan = null; S.route = null;
   S.insp = { x: 30, y: -30, path: [{ x: 30, y: 300 }, { x: 100, y: 300 }, { x: 100, y: 420 }, { x: 215, y: 420 }, { x: 215, y: 300 }], speed: CONFIG.inspectorSpeed, arrived: false };
   // inspektorius eina prie žaidėjo
   const p = S.player;
@@ -1396,7 +1513,7 @@ function drawGuests() {
 function drawPlayer() {
   const p = S.player;
   drawPerson(p.x, p.y, { shirt: '#f5c542', skin: '#ffdbac', hat: 'tophat', hatColor: '#1e1e1e', face: 'happy', role: 'player',
-    walk: (S.keys.ArrowLeft || S.keys.ArrowRight || S.keys.ArrowUp || S.keys.ArrowDown || S.keys.KeyA || S.keys.KeyD || S.keys.KeyW || S.keys.KeyS) ? p.walk : 0,
+    walk: p.moving ? p.walk : 0,
     stun: p.stun > 0, soot: p.soot > 0, legs: '#2d2d44' });
   if (p.stun > 0) for (let i = 0; i < 3; i++) { const a = S.time * 5 + i * 2.1; text('★', p.x + Math.cos(a) * 14, p.y - 46 + Math.sin(a) * 4, { size: 11, color: '#ffd84a' }); }
 }
@@ -1457,24 +1574,48 @@ function render() {
   drawInspector();
   drawPlayer();
   drawEffects();
+  if (S.tapMark && S.mode === 'play') {
+    const f = S.tapMark.t / 0.8;
+    ctx.strokeStyle = 'rgba(255,230,100,' + (1 - f) + ')'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(S.tapMark.x, S.tapMark.y + 18, 8 + f * 16, 4 + f * 7, 0, 0, 7); ctx.stroke();
+  }
+  drawHud();
   // apatinė užuomina
   if (S.mode === 'play') {
     const hint = contextHint();
-    if (hint) { ctx.fillStyle = 'rgba(20,12,30,0.75)'; rr(W / 2 - 230, H - 30, 460, 24, 10); ctx.fill(); text(hint, W / 2, H - 18, { size: 13, color: '#fff7e6' }); }
+    if (hint) {
+      const big = S.touch;
+      ctx.font = 'bold ' + (big ? 20 : 13) + 'px "Trebuchet MS", sans-serif';
+      const tw = Math.min(W - 20, ctx.measureText(hint).width + 30), bh = big ? 34 : 24;
+      ctx.fillStyle = 'rgba(20,12,30,0.8)'; rr(W / 2 - tw / 2, H - bh - 6, tw, bh, 10); ctx.fill();
+      text(hint, W / 2, H - 6 - bh / 2, { size: big ? 20 : 13, color: '#fff7e6' });
+    }
   }
   ctx.restore();
 }
+// Viršutinė juosta žaidimo lauke: pinigai, kambariai, pasaulis (svarbu telefone, kur šoninis skydelis žemiau)
+function drawHud() {
+  if (S.mode === 'title' || S.mode === 'flight') return;
+  const big = S.touch, fs = big ? 22 : 15, h = big ? 34 : 24;
+  ctx.fillStyle = 'rgba(20,12,30,0.78)'; rr(270, 2, 680, h, 10); ctx.fill();
+  ctx.fillStyle = '#f5c542'; ctx.beginPath(); ctx.arc(290, 2 + h / 2, fs * 0.45, 0, 7); ctx.fill();
+  text(String(S.money), 304, 2 + h / 2, { size: fs, color: '#ffe066', align: 'left' });
+  const ok = S.rooms.filter(r => r.state !== 'destroyed').length;
+  text('Kambariai ' + ok + '/' + S.rooms.length, 470, 2 + h / 2, { size: fs, color: ok <= 2 ? '#ff7675' : '#fff7e6', align: 'left' });
+  text(world().name + '  ·  ' + boughtUpgrades() + '/' + totalUpgrades(), 940, 2 + h / 2, { size: big ? 18 : 13, color: '#d8c8ef', align: 'right' });
+}
 function contextHint() {
-  const dg = deskGuest();
+  const dg = deskGuest(), T = S.touch;
   if (S.player.stun > 0) return 'Apsvaigai nuo sprogimo…';
   const pt = policeTarget();
-  if (pt && pt.state === 'fleeing') return 'Blogiukas bėga! Spausk P, kad pagautum!';
-  if (atDesk() && dg) return dg.scanned ? 'E — įleisti, X — neįleisti, P — policija' : 'Tarpas — skanuoti svečią';
-  if (dg && !atDesk()) return 'Prie registratūros laukia svečias!';
+  if (pt && pt.state === 'fleeing') return T ? 'Blogiukas bėga! Spausk „Pagauti bėglį!“' : 'Blogiukas bėga! Spausk P, kad pagautum!';
+  if (atDesk() && dg) return dg.scanned ? (T ? 'Įleisti, neįleisti ar policija? Rinkis mygtuką' : 'E — įleisti, X — neįleisti, P — policija') : (T ? 'Spausk „Skanuoti“' : 'Tarpas — skanuoti svečią');
+  if (dg && !atDesk()) return T ? 'Svečias laukia! Bakstelk prie stalo' : 'Prie registratūros laukia svečias!';
   const rt = rebuildTarget();
-  if (rt) return S.money >= rebuildCost() ? 'R — atstatyti kambarį už ' + rebuildCost() : 'Atstatymui reikia ' + rebuildCost() + ' pinigų';
+  if (rt) return S.money >= rebuildCost() ? (T ? 'Spausk „Atstatyti“ už ' : 'R — atstatyti kambarį už ') + rebuildCost() : 'Atstatymui reikia ' + rebuildCost() + ' pinigų';
   const room = playerRoom();
-  if (room && room.guest && room.guest.state === 'inRoom') return 'Įtari svečią? P — kviesti policiją';
+  if (room && room.guest && room.guest.state === 'inRoom') return T ? 'Įtari svečią? Spausk „Kviesti policiją“' : 'Įtari svečią? P — kviesti policiją';
+  if (T && S.time < 25) return 'Bakstelk ten, kur nori eiti';
   return '';
 }
 
@@ -1547,9 +1688,22 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => { S.keys[e.code] = false; });
 window.addEventListener('blur', () => { S.keys = {}; });
+// Lietimas / pelė ant žaidimo lauko — eiti ten, kur bakstelėjai
+function setTouch(on) { if (S.touch === on) return; S.touch = on; document.body.classList.toggle('touch', on); dirtyPanel = true; }
+if (window.matchMedia && matchMedia('(pointer: coarse)').matches) setTouch(true);
+window.addEventListener('pointerdown', e => { if (e.pointerType === 'touch' || e.pointerType === 'pen') setTouch(true); }, true);
+window.addEventListener('keydown', () => { if (S.touch && !(window.matchMedia && matchMedia('(pointer: coarse)').matches)) setTouch(false); }, true);
+cv.addEventListener('pointerdown', e => {
+  if (S.mode !== 'play') return;
+  e.preventDefault();
+  const rect = cv.getBoundingClientRect();
+  tapMove((e.clientX - rect.left) * W / rect.width, (e.clientY - rect.top) * H / rect.height);
+});
+cv.addEventListener('contextmenu', e => e.preventDefault());
 $('actions').addEventListener('click', e => { const b = e.target.closest('button[data-act]'); if (b) doAction(b.dataset.act); });
 $('shopGrid').addEventListener('click', e => { const b = e.target.closest('button[data-buy]'); if (b) buyUpgrade(b.dataset.buy); });
 $('btnShopClose').addEventListener('click', closeShop);
+$('btnShopX').addEventListener('click', closeShop);
 $('btnStart').addEventListener('click', () => startGame());
 $('btnFly').addEventListener('click', () => fly());
 $('btnRetry').addEventListener('click', () => retry());
