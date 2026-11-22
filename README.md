@@ -17,6 +17,9 @@
 | R | atstatyti susprogusį kambarį |
 | U | tobulinimai |
 
+## Golden restoranas
+Parduotuvėje galima atidaryti restoraną (kairėje nuo lifto) ir jį gerinti iki 7 žvaigždučių. Svečiai ateina iš gatvės, užsisako prie prekystalio, šefai gamina virtuvėje, padavėjas atneša maistą, svečiai pavalgo ir sumoka.
+
 ## Struktūra
 - Visas žaidimas yra viename `index.html` faile (HTML + CSS + JS, Canvas).
 - Visi balanso skaičiai ir pasaulių duomenys laikomi `CONFIG` objekte. Naują pasaulį pridėsi įrašu į `CONFIG.worlds`.
