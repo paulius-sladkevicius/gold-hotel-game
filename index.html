@@ -54,8 +54,10 @@
       paklausia; mygtukas „Atgal“ sustabdo žaidimą ir klausia „Ar tikrai išeiti?“.
   11. Visas ekranas: mygtukas „Visas ekranas“ / F arba „Pradėti per visą ekraną“.
       Android telefone vaizdas pasukamas gulsčiai; iPhone Safari to neleidžia.
-  12. Golden restoranas (pagal piešinį): priestatas kairėje nuo lifto, perkamas ir
-      gerinamas parduotuvėje (7 lygiai = 7 žvaigždutės). Svečiai užsisako prie
+  12. Golden restoranas (pagal piešinį): 1 aukšte virš laukiamojo, perkamas ir
+      gerinamas parduotuvėje (7 lygiai = 7 žvaigždutės). Kambariai — nuo 2 aukšto.
+      Lauke: krūmai, medžiai, suoliukas, „P“ aikštelė su mašinomis (iš ten ateina
+      svečiai), saulė ir lietaus debesis; ant stogo iškaba „GOLDEN HOTEL“. Svečiai užsisako prie
       prekystalio, šefai gamina virtuvėje, padavėjas atneša, svečiai sumoka.
   13. Testavimui: atidarius su ?debug (pvz. index.html?debug) klavišas M
      prideda pinigų. Konsolėje pasiekiama window.GoldHotel.
@@ -303,26 +305,27 @@ const CONFIG = {
   debugMoney: 500,
   startMoney: 0,
   // Pastatas (vaizdas iš šono): aukštai su kambariais, liftas kairėje
-  building: { floorHeight: 150, roomWidth: 210, roomsPerFloor: 2, startRooms: 6, maxRooms: 14, liftSpeed: 240 },
-  // Golden restoranas — priestatas kairėje nuo lifto (pirmas lygis jį atidaro). Kainos dauginamos iš pasaulio
+  building: { floorHeight: 150, roomWidth: 210, roomsPerFloor: 2, startRooms: 6, maxRooms: 12, liftSpeed: 240 },
+  // Golden restoranas — 1 aukšte (virš laukiamojo), atidaromas ir gerinamas parduotuvėje. Kainos dauginamos iš pasaulio
   // kainų santykio (upgradeCost[0] / 60), patiekalo kaina — iš (roomPrice / 12).
   restaurant: {
-    x1: -760,                                   // kairė siena (įėjimas iš gatvės)
-    counterX: -365, kitchenX: -245, waiterHome: -292, menuX: -478, clockX: -175, plantX: -148,
-    tables: [-600, -112, -36, -680, -520],      // staliukų vietos (atsiveria tokia tvarka)
-    orderTime: 1.5, eatTime: [8, 12], walkSpeed: 95, waiterSpeed: 160,
+    floor: 1,
+    counterX: 300, orderX: 262, kitchenX: 398, waiterHome: 360, menuX: 168, pictureX: 462, clockX: 530, catX: 216,
+    tables: [206, 466, 528],                    // staliukai; prie kiekvieno 2 vietos (kairėje ir dešinėje)
+    seatGap: 18,
+    orderTime: 1.5, eatTime: [8, 12], walkSpeed: 105, waiterSpeed: 150,
     levels: [
-      { n: 'Atidaryti Golden restoraną', d: 'Ateina svečiai pavalgyti ir moka.', cost: 150, tables: 2, price: 8, cook: 7, chefs: 1, spawn: [10, 14] },
-      { n: 'Daugiau staliukų', d: 'Telpa daugiau svečių.', cost: 120, tables: 3, price: 8, cook: 7, chefs: 1, spawn: [8, 12] },
-      { n: 'Naujas meniu', d: 'Skanesni ir brangesni patiekalai.', cost: 160, tables: 3, price: 12, cook: 7, chefs: 1, spawn: [8, 12] },
-      { n: 'Antras šefas', d: 'Virtuvė gamina greičiau.', cost: 200, tables: 3, price: 12, cook: 4.5, chefs: 2, spawn: [7, 10] },
-      { n: 'Didžioji salė', d: 'Dar daugiau staliukų.', cost: 240, tables: 5, price: 13, cook: 4.5, chefs: 2, spawn: [6, 9] },
-      { n: 'Gyva muzika', d: 'Svečiai ateina dažniau.', cost: 280, tables: 5, price: 15, cook: 4.5, chefs: 2, spawn: [4.5, 7], music: true },
-      { n: 'Auksinis aptarnavimas', d: 'Brangiausi patiekalai ir arbatpinigiai.', cost: 350, tables: 5, price: 20, cook: 3.5, chefs: 2, spawn: [4, 6], music: true, tip: 4 }
+      { n: 'Atidaryti Golden restoraną', d: 'Ateina svečiai pavalgyti ir moka.', cost: 150, seats: 2, price: 8, cook: 7, chefs: 1, spawn: [10, 14] },
+      { n: 'Antras staliukas', d: 'Telpa daugiau svečių.', cost: 120, seats: 4, price: 8, cook: 7, chefs: 1, spawn: [8, 12] },
+      { n: 'Naujas meniu', d: 'Skanesni ir brangesni patiekalai.', cost: 160, seats: 4, price: 12, cook: 7, chefs: 1, spawn: [8, 12] },
+      { n: 'Antras šefas', d: 'Virtuvė gamina greičiau.', cost: 200, seats: 4, price: 12, cook: 4.5, chefs: 2, spawn: [7, 10] },
+      { n: 'Trečias staliukas', d: 'Dar daugiau vietų.', cost: 240, seats: 6, price: 13, cook: 4.5, chefs: 2, spawn: [6, 9] },
+      { n: 'Gyva muzika', d: 'Svečiai ateina dažniau.', cost: 280, seats: 6, price: 15, cook: 4.5, chefs: 2, spawn: [4.5, 7], music: true },
+      { n: 'Auksinis aptarnavimas', d: 'Brangiausi patiekalai ir arbatpinigiai.', cost: 350, seats: 6, price: 20, cook: 3.5, chefs: 2, spawn: [4, 6], music: true, tip: 4 }
     ],
     menu: [{ k: 'pasta', n: 'Makaronai' }, { k: 'steak', n: 'Kepsnys' }, { k: 'salad', n: 'Salotos' }, { k: 'soup', n: 'Sriuba' }, { k: 'pancakes', n: 'Blynai' }, { k: 'drink', n: 'Gėrimas' }]
   },
-  camera: { zoom: 1.6, follow: 5, lookAhead: 140, zoomOutWidth: 1560, zoomOutWidthRest: 2300 }, // „Visas viešbutis“: kiek pločio rodyti (su restoranu — plačiau) // priartinimas, sekimo greitis, kiek pažiūrėti į priekį prie stalo
+  camera: { zoom: 1.6, follow: 5, lookAhead: 140, zoomOutWidth: 2180 }, // „Visas viešbutis“ rodo visą pastatą ir lauką // priartinimas, sekimo greitis, kiek pažiūrėti į priekį prie stalo
   player: { speed: 230, stunTime: 2.2 },
   guest: {
     speed: 110,
@@ -543,17 +546,17 @@ const GEO = {
   deskZone: { x1: 696, x2: 770 },          // čia stovėdamas aptarnauji svečią
   front: { x: 866 },                       // svečio vieta prie stalo
   playerStartX: 734,
-  worldW: 1460
+  worldW: 1960,
+  parkX: 1720                              // stovėjimo aikštelė: iš čia ateina ir čia išeina svečiai
 };
 const floorY = f => G - f * FH;            // f aukšto grindų paviršius
 const standY = f => floorY(f) - 20;        // žmogeliuko centras stovint ant f aukšto
-function floorsCount() { return Math.max(1, Math.ceil(S.rooms.length / BLD.roomsPerFloor)); }
+// 0 aukštas — vestibiulis, 1 — restoranas, nuo 2 — kambariai. Grąžina viršutinio aukšto numerį.
+function floorsCount() { return 1 + Math.max(1, Math.ceil(S.rooms.length / BLD.roomsPerFloor)); }
 function towerX2() { return GEO.roomsX1 + BLD.roomsPerFloor * BLD.roomWidth; }
-function worldTop() { return floorY(floorsCount() + 1) - 120; }
-const REST = CONFIG.restaurant, RX1 = REST.x1;
-function worldLeft() { return RX1 - 220; }
-const LSTAIR_TOP = () => ({ x: RX1 - 4, y: standY(0) });
-const LSTAIR_BOTTOM = () => ({ x: RX1 - 62, y: streetY });
+function worldTop() { return floorY(floorsCount() + 1) - 190; }
+const REST = CONFIG.restaurant, RF = REST.floor;
+function worldLeft() { return -160; }
 const STREET = G + 36;                     // gatvė žemiau — į viešbutį lipama laiptais
 const streetY = STREET - 20;               // žmogeliuko centras gatvėje
 const STAIR_TOP = () => ({ x: GEO.lobbyX2 + 4, y: standY(0) });
@@ -564,7 +567,7 @@ function onFloorLevel(q) { return Math.abs(q.y - standY(floorOfY(q.y))) < 1; }
 function inShaft(x) { return x >= GEO.shaft.x1 + 8 && x <= GEO.shaft.x2 - 8; }
 function queueSpot(i) { return i === 0 ? { x: GEO.front.x, y: standY(0) } : { x: GEO.lobbyX2 + 96 + (i - 1) * 34, y: streetY }; }
 function makeRoom(id) {
-  const f = 1 + Math.floor(id / BLD.roomsPerFloor), col = id % BLD.roomsPerFloor;
+  const f = RF + 1 + Math.floor(id / BLD.roomsPerFloor), col = id % BLD.roomsPerFloor;
   const x = GEO.roomsX1 + col * BLD.roomWidth, y = floorY(f) - FH;
   return {
     id, num: f * 100 + col + 1, floor: f, col, x, y, w: BLD.roomWidth, h: FH,
@@ -741,7 +744,7 @@ function spawnGuest(kind) {
    Kambariai ir judėjimas (tarp aukštų — liftu)
    ======================================================================= */
 function freeRoom() { return S.rooms.find(r => r.state === 'free'); }
-const EXIT_X = () => GEO.worldW + 50;
+const EXIT_X = () => GEO.parkX;
 function pathToRoom(room) { return [{ x: GEO.shaft.cx, y: standY(0) }, { x: GEO.shaft.cx, y: standY(room.floor) }, { x: room.spot.x, y: room.spot.y }]; }
 function pathToExit(fromFloor) {
   const p = [];
@@ -1082,8 +1085,8 @@ function updatePlayer(dt) {
   if (mx) {
     if (!onFloorLevel(p)) { const ty = standY(floorOfY(p.y)); if (Math.abs(ty - p.y) < 14) p.y = ty; }
     if (onFloorLevel(p)) {
-      const f = floorOfY(p.y), maxX = (f === 0 ? GEO.lobbyX2 : towerX2()) - 12;
-      const minX = f === 0 && restOpen() ? RX1 + 12 : GEO.shaft.x1 + 12;
+      const f = floorOfY(p.y), maxX = (f === 0 ? GEO.lobbyX2 : (f === RF && !restOpen()) ? GEO.shaft.x2 : towerX2()) - 12;
+      const minX = GEO.shaft.x1 + 12;
       p.x = clamp(p.x + mx * CONFIG.player.speed * dt, minX, maxX);
       p.face = mx; p.moving = true;
     }
@@ -1096,8 +1099,7 @@ function tapMove(wx, wy) {
   let f = wy >= floorY(0) ? 0 : clamp(Math.floor((G - wy) / FH), 0, nF);
   if (f >= 1 && wx > towerX2() + 20) f = 0; // bakstelėjus ant priestato stogo — vestibiulis
   let x;
-  if (wx < GEO.shaft.x1 - 4) x = (f === 0 && restOpen()) ? clamp(wx, RX1 + 12, GEO.shaft.x1 + 12) : GEO.shaft.cx; // restoranas
-  else if (wx <= GEO.shaft.x2) x = GEO.shaft.cx;
+  if (wx <= GEO.shaft.x2 || (f === RF && !restOpen())) x = GEO.shaft.cx; // liftas (uždarytame restorane neišlipsi)
   else if (f === 0) x = (wx >= GEO.deskZone.x1 - 20 && wx <= GEO.front.x + 50) ? GEO.playerStartX : clamp(wx, GEO.shaft.x1 + 12, GEO.lobbyX2 - 12);
   else x = clamp(wx, GEO.shaft.x1 + 12, towerX2() - 12);
   const t = { x, y: standY(f) }, p = S.player;
@@ -1138,12 +1140,16 @@ function closeShop() { if (S.mode !== 'shop') return; $('ovShop').classList.remo
    prekystalio, atsisėda, šefai gamina virtuvėje, padavėjas atneša maistą,
    svečias pavalgo, sumoka ir išeina. Perkamas ir gerinamas parduotuvėje.
    ======================================================================= */
-function newRest() { return { level: 0, diners: [], orders: [], ready: [], spawn: 2, nextId: 1, waiter: { x: REST.waiterHome, y: standY(0), path: [], speed: REST.waiterSpeed, state: 'idle', order: null, carry: null, walk: 0 } }; }
+function newRest() { return { level: 0, diners: [], orders: [], ready: [], spawn: 2, nextId: 1, waiter: { x: REST.waiterHome, y: standY(RF), path: [], speed: REST.waiterSpeed, state: 'idle', order: null, carry: null, walk: 0 } }; }
 function restOpen() { return !!(S.rest && S.rest.level > 0); }
 function restLv(lv) { return REST.levels[(lv === undefined ? S.rest.level : lv) - 1]; }
 function restCost() { const L = REST.levels[S.rest.level]; return L ? Math.round(L.cost * bal().upgradeCost[0] / 60 * lapMult()) : Infinity; }
 function restPrice(lv) { const L = restLv(lv); return Math.max(1, Math.round(L.price * bal().roomPrice / 12 / lapMult())) + (L.tip || 0); }
-function restEffect(lv) { const L = restLv(lv); return L.tables + ' staliukai, patiekalas ' + restPrice(lv) + ', ' + (L.chefs > 1 ? L.chefs + ' šefai' : '1 šefas') + ', gaminama ' + L.cook + ' s'; }
+function restEffect(lv) { const L = restLv(lv); return L.seats + ' vietos prie ' + Math.ceil(L.seats / 2) + ' staliukų, patiekalas ' + restPrice(lv) + ', ' + (L.chefs > 1 ? L.chefs + ' šefai' : '1 šefas') + ', gaminama ' + L.cook + ' s'; }
+function restSeats(n) { // [{x, table}] — pirmiausia abi vietos prie 1 staliuko, tada prie 2…
+  const out = []; for (const t of REST.tables) { out.push({ x: t - REST.seatGap, table: t }); out.push({ x: t + REST.seatGap, table: t }); }
+  return out.slice(0, n);
+}
 function buyRestaurant() {
   const L = REST.levels[S.rest.level]; if (!L) return;
   const c = restCost(); if (S.money < c) return;
@@ -1156,25 +1162,26 @@ function buyRestaurant() {
 }
 function updateRestaurant(dt) {
   const R = S.rest; if (!restOpen()) return;
-  const L = restLv();
-  // nauji svečiai (jei yra laisvas staliukas)
+  const L = restLv(), yR = standY(RF), SH = GEO.shaft;
+  // nauji svečiai atvažiuoja į aikštelę ir eina pro įėjimą, liftu į 1 aukštą (jei yra laisva vieta)
   R.spawn -= dt;
   if (R.spawn <= 0) {
     R.spawn = rand(L.spawn[0], L.spawn[1]);
-    const free = REST.tables.slice(0, L.tables).find(tx => !R.diners.some(d => d.table === tx));
-    if (free !== undefined) R.diners.push({ id: R.nextId++, look: randomLook(), table: free, x: worldLeft() - 40, y: streetY, speed: REST.walkSpeed,
-      path: [LSTAIR_BOTTOM(), LSTAIR_TOP(), { x: REST.counterX + 6, y: standY(0) }], state: 'toCounter', dish: pick(REST.menu), t: 0, walk: 0 });
+    const free = restSeats(L.seats).find(st => !R.diners.some(d => d.seat === st.x));
+    if (free) R.diners.push({ id: R.nextId++, look: randomLook(), seat: free.x, table: free.table, x: EXIT_X(), y: streetY, speed: REST.walkSpeed,
+      path: [STAIR_BOTTOM(), STAIR_TOP(), { x: SH.cx, y: standY(0) }, { x: SH.cx, y: yR }, { x: REST.orderX, y: yR }], state: 'toCounter', dish: pick(REST.menu), t: 0, walk: 0 });
   }
   for (const d of R.diners) {
     if (d.state === 'toCounter') { if (moveAlong(d, dt)) { d.state = 'ordering'; d.t = REST.orderTime; } }
-    else if (d.state === 'ordering') { d.t -= dt; if (d.t <= 0) { d.state = 'toTable'; d.path = [{ x: d.table - 26, y: standY(0) }]; } }
+    else if (d.state === 'ordering') { d.t -= dt; if (d.t <= 0) { d.state = 'toTable'; d.path = [{ x: d.seat, y: yR }]; } }
     else if (d.state === 'toTable') { if (moveAlong(d, dt)) { d.state = 'waiting'; R.orders.push({ diner: d, t: L.cook }); } }
     else if (d.state === 'eating') {
       d.t -= dt;
       if (d.t <= 0) {
         const pay = restPrice();
         addMoney(pay, d.x, d.y - 46); S.stats.restEarned += pay; sfx('coin');
-        d.state = 'leaving'; d.face = 'happy'; d.path = [LSTAIR_TOP(), LSTAIR_BOTTOM(), { x: worldLeft() - 60, y: streetY }];
+        d.state = 'leaving'; d.face = 'happy';
+        d.path = [{ x: SH.cx, y: yR }, { x: SH.cx, y: standY(0) }, STAIR_TOP(), STAIR_BOTTOM(), { x: EXIT_X(), y: streetY }];
       }
     } else if (d.state === 'leaving') { if (moveAlong(d, dt)) d.state = 'gone'; }
   }
@@ -1185,10 +1192,10 @@ function updateRestaurant(dt) {
   // padavėjas
   const w = R.waiter;
   if (w.state === 'idle') {
-    if (R.ready.length) { w.order = R.ready.shift(); w.state = 'toKitchen'; w.path = [{ x: REST.kitchenX, y: standY(0) }]; }
-    else if (Math.abs(w.x - REST.waiterHome) > 1) { w.path = [{ x: REST.waiterHome, y: standY(0) }]; moveAlong(w, dt); }
+    if (R.ready.length) { w.order = R.ready.shift(); w.state = 'toKitchen'; w.path = [{ x: REST.kitchenX, y: yR }]; }
+    else if (Math.abs(w.x - REST.waiterHome) > 1) { w.path = [{ x: REST.waiterHome, y: yR }]; moveAlong(w, dt); }
   } else if (w.state === 'toKitchen') {
-    if (moveAlong(w, dt)) { w.state = 'toTable'; w.carry = w.order.diner.dish.k; w.path = [{ x: w.order.diner.table + 26, y: standY(0) }]; }
+    if (moveAlong(w, dt)) { w.state = 'toTable'; w.carry = w.order.diner.dish.k; w.path = [{ x: w.order.diner.table, y: yR }]; }
   } else if (w.state === 'toTable') {
     if (moveAlong(w, dt)) {
       const d = w.order.diner;
@@ -1210,122 +1217,111 @@ function drawFood(k, x, y, s) {
 }
 function chair(x, ground, dir) { // kėdė iš šono (atlošas toliau nuo staliuko)
   ctx.fillStyle = '#7a4a22';
-  ctx.fillRect(x - 9, ground - 22, 18, 4); ctx.fillRect(x - 8, ground - 18, 3, 18); ctx.fillRect(x + 5, ground - 18, 3, 18);
-  ctx.fillRect(dir < 0 ? x - 9 : x + 6, ground - 46, 3, 26);
+  ctx.fillRect(x - 8, ground - 22, 16, 4); ctx.fillRect(x - 7, ground - 18, 3, 18); ctx.fillRect(x + 4, ground - 18, 3, 18);
+  ctx.fillRect(dir < 0 ? x - 8 : x + 5, ground - 44, 3, 24);
 }
 function restTable(x, ground, menuCard) {
-  ctx.fillStyle = '#fff'; rr(x - 26, ground - 42, 52, 14, 4); ctx.fill();
-  ctx.fillStyle = '#c0392b'; ctx.fillRect(x - 26, ground - 31, 52, 3);
+  ctx.fillStyle = '#fff'; rr(x - 20, ground - 42, 40, 14, 4); ctx.fill();
+  ctx.fillStyle = '#c0392b'; ctx.fillRect(x - 20, ground - 31, 40, 3);
   ctx.fillStyle = '#5b3417'; ctx.fillRect(x - 3, ground - 28, 6, 26); ctx.fillRect(x - 13, ground - 3, 26, 3);
   // vaza su gėlėmis (kaip piešinyje)
   ctx.fillStyle = '#74b9ff'; ctx.fillRect(x - 3, ground - 56, 6, 14);
   ctx.strokeStyle = '#2e9e5b'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x - 1, ground - 56); ctx.lineTo(x - 5, ground - 66); ctx.moveTo(x + 1, ground - 56); ctx.lineTo(x + 5, ground - 68); ctx.stroke();
   for (const [fx, fy, c] of [[-5, -67, '#e84393'], [5, -69, '#fdcb6e']]) { ctx.fillStyle = c; for (let k = 0; k < 5; k++) { const a = k * 1.256; ctx.beginPath(); ctx.arc(x + fx + Math.cos(a) * 2.6, ground + fy + Math.sin(a) * 2.6, 2, 0, 7); ctx.fill(); } }
-  if (menuCard) { ctx.fillStyle = '#f3ead2'; ctx.save(); ctx.translate(x + 15, ground - 46); ctx.rotate(0.15); ctx.fillRect(-5, -6, 10, 10); ctx.fillStyle = '#5b3f2a'; ctx.font = 'bold 4px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('MENIU', 0, -2); ctx.restore(); }
+  if (menuCard) { ctx.fillStyle = '#f3ead2'; ctx.save(); ctx.translate(x + 12, ground - 46); ctx.rotate(0.15); ctx.fillRect(-5, -6, 10, 10); ctx.fillStyle = '#5b3f2a'; ctx.font = 'bold 4px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('MENIU', 0, -2); ctx.restore(); }
 }
 function drawRestaurant() {
-  const P = world().palette, x1 = RX1, x2 = GEO.shaft.x1 - 10, ceil = floorY(1) + 6, open = restOpen(), R = S.rest, lv = R.level, L = open ? restLv() : null;
-  // pamatai ir laiptai kairėje
-  ctx.fillStyle = '#8a8580'; ctx.fillRect(x1 - 12, G, x2 - x1 + 14, STREET - G);
-  ctx.fillStyle = '#b8b2a8'; ctx.beginPath(); ctx.moveTo(x1 - 6, G); ctx.lineTo(x1 - 24, G); ctx.lineTo(x1 - 24, G + 12); ctx.lineTo(x1 - 42, G + 12); ctx.lineTo(x1 - 42, G + 24);
-  ctx.lineTo(x1 - 60, G + 24); ctx.lineTo(x1 - 60, STREET); ctx.lineTo(x1 - 6, STREET); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#8a8580'; ctx.lineWidth = 2; ctx.stroke();
-  // pastato dalis su suapvalintu kairiu kampu
-  ctx.fillStyle = P.wall; rr(x1 - 12, floorY(1) - 14, x2 + 30 - (x1 - 12), FH + 14, 54); ctx.fill(); ctx.fillRect(x1 - 12, G - 60, x2 + 30 - (x1 - 12), 60);
-  // vidus: šilta siena, tamsiai raudonas lambris, šachmatinės grindys
+  // Golden restoranas 1 aukšte (pagal piešinį: iškaba, meniu, prekystalis, virtuvės durys, staliukai su gėlėmis)
+  const R = S.rest, open = restOpen(), lv = R.level, L = open ? restLv() : null;
+  const x1 = GEO.shaft.x2 + 2, x2 = towerX2(), GF = floorY(RF), ceil = floorY(RF + 1) + 8;
   const wallC = '#f6e2b3';
-  ctx.fillStyle = wallC; rr(x1, ceil, x2 - x1, G - ceil, 40); ctx.fill(); ctx.fillRect(x1, G - 60, x2 - x1, 60);
-  ctx.fillStyle = 'rgba(200,150,60,0.12)'; for (let x = x1 + 14; x < x2 - 10; x += 30) ctx.fillRect(x, ceil + 10, 12, G - ceil - 70);
-  ctx.fillStyle = '#8e2f2a'; ctx.fillRect(x1, G - 52, x2 - x1, 52);
-  ctx.fillStyle = '#f5c542'; ctx.fillRect(x1, G - 56, x2 - x1, 4);
-  for (let x = x1; x < x2; x += 16) { ctx.fillStyle = ((x - x1) / 16) % 2 ? '#2d3436' : '#f3ead2'; ctx.fillRect(x, G - 8, 16, 8); }
-  // durų anga į gatvę (kairėje)
-  ctx.fillStyle = wallC; ctx.fillRect(x1 - 12, G - 100, 14, 100);
+  ctx.fillStyle = wallC; ctx.fillRect(x1, ceil, x2 - x1, GF - ceil);
+  ctx.fillStyle = 'rgba(200,150,60,0.12)'; for (let x = x1 + 10; x < x2 - 10; x += 28) ctx.fillRect(x, ceil + 6, 12, GF - ceil - 62);
+  ctx.fillStyle = '#8e2f2a'; ctx.fillRect(x1, GF - 52, x2 - x1, 52);
+  ctx.fillStyle = '#f5c542'; ctx.fillRect(x1, GF - 56, x2 - x1, 4);
+  for (let x = x1; x < x2; x += 16) { ctx.fillStyle = ((x - x1) / 16) % 2 ? '#2d3436' : '#f3ead2'; ctx.fillRect(x, GF - 8, Math.min(16, x2 - x), 8); }
   // iškaba „GOLDEN RESTORANAS“ su 7 žvaigždutėmis
-  const sx = REST.counterX, sw = 210;
-  ctx.fillStyle = '#2b1d3a'; rr(sx - sw / 2, ceil + 2, sw, 38, 8); ctx.fill();
-  ctx.strokeStyle = open ? '#f5c542' : '#6d5d80'; ctx.lineWidth = 2.5; rr(sx - sw / 2 + 3, ceil + 5, sw - 6, 32, 6); ctx.stroke();
-  text('GOLDEN RESTORANAS', sx, ceil + 15, { size: 15, color: open ? '#f5c542' : '#8a7a9a' });
-  for (let i = 0; i < 7; i++) text('★', sx - 54 + i * 18, ceil + 30, { size: 12, color: i < lv ? '#ffd84a' : 'rgba(255,255,255,0.2)' });
-  if (!open) {
-    // uždaryta: užkalta lentomis
-    ctx.fillStyle = 'rgba(30,20,40,0.55)'; ctx.fillRect(x1, ceil + 50, x2 - x1, G - ceil - 50);
+  const sx = REST.counterX, sw = 176;
+  ctx.fillStyle = '#2b1d3a'; rr(sx - sw / 2, ceil + 2, sw, 36, 8); ctx.fill();
+  ctx.strokeStyle = open ? '#f5c542' : '#6d5d80'; ctx.lineWidth = 2.5; rr(sx - sw / 2 + 3, ceil + 5, sw - 6, 30, 6); ctx.stroke();
+  text('GOLDEN RESTORANAS', sx, ceil + 15, { size: 13, color: open ? '#f5c542' : '#8a7a9a' });
+  for (let i = 0; i < 7; i++) text('★', sx - 48 + i * 16, ceil + 29, { size: 11, color: i < lv ? '#ffd84a' : 'rgba(255,255,255,0.2)' });
+  if (!open) { // uždaryta: užkalta lentomis
+    ctx.fillStyle = 'rgba(30,20,40,0.55)'; ctx.fillRect(x1, ceil + 42, x2 - x1, GF - ceil - 42);
     ctx.fillStyle = '#a0632f';
-    for (let i = 0; i < 6; i++) { ctx.save(); ctx.translate(x1 + 70 + i * 120, G - 50); ctx.rotate(i % 2 ? 0.35 : -0.35); ctx.fillRect(-60, -7, 120, 14); ctx.restore(); }
-    ctx.fillStyle = '#f3ead2'; rr(REST.counterX - 150, G - 92, 300, 32, 6); ctx.fill();
-    text('UŽDARYTA — atidaryk: Tobulinimai', REST.counterX, G - 76, { size: 14, color: '#8e2f2a' });
+    for (let i = 0; i < 4; i++) { ctx.save(); ctx.translate(x1 + 60 + i * 100, GF - 46); ctx.rotate(i % 2 ? 0.35 : -0.35); ctx.fillRect(-55, -7, 110, 14); ctx.restore(); }
+    ctx.fillStyle = '#f3ead2'; rr(sx - 120, GF - 92, 240, 30, 6); ctx.fill();
+    text('UŽDARYTA — atidaryk: Tobulinimai', sx, GF - 77, { size: 12, color: '#8e2f2a' });
+    drawDinersOutside();
     return;
   }
-  // sienos dekoracijos: paveikslas, katino lėkštė, vazonas, meniu lenta, laikrodis, vazonas
-  picture(x1 + 34, ceil + 26, 50, 40, 'landscape');
-  roundPlate(x1 + 132, ceil + 76, 15, 'cat');
-  spikyPlant(x1 + 18, G, 1.05);
+  // sienos dekoracijos
   const mx = REST.menuX;
-  ctx.fillStyle = '#fdfaf1'; ctx.fillRect(mx - 26, ceil + 14, 52, 84); ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = 2; ctx.strokeRect(mx - 26, ceil + 14, 52, 84);
-  text('MENIU', mx, ceil + 24, { size: 10, color: '#8e2f2a' });
-  REST.menu.forEach((m, i) => text('• ' + m.n, mx - 22, ceil + 37 + i * 10.5, { size: 7, color: '#2d3436', align: 'left', bold: false }));
-  wallClock(REST.clockX, ceil + 34, 16);
-  spikyPlant(REST.plantX, G, 0.95);
-  if (L.music) { // gyva muzika
-    for (let i = 0; i < 3; i++) { const t = (S.time * 0.5 + i / 3) % 1; ctx.globalAlpha = 1 - t; text(i % 2 ? '♪' : '♫', -560 + i * 230 + Math.sin(S.time * 2 + i) * 10, ceil + 60 - t * 30, { size: 16, color: '#8e2f2a' }); ctx.globalAlpha = 1; }
-  }
-  // durys į virtuvę su apvaliu langeliu (pro jį matosi šefas)
+  ctx.fillStyle = '#fdfaf1'; ctx.fillRect(mx - 22, ceil + 8, 44, 74); ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = 2; ctx.strokeRect(mx - 22, ceil + 8, 44, 74);
+  text('MENIU', mx, ceil + 17, { size: 9, color: '#8e2f2a' });
+  REST.menu.forEach((m, i) => text('• ' + m.n, mx - 19, ceil + 28 + i * 9, { size: 6.5, color: '#2d3436', align: 'left', bold: false }));
+  roundPlate(REST.catX, ceil + 30, 12, 'cat');
+  picture(REST.pictureX - 22, ceil + 14, 44, 34, 'landscape');
+  wallClock(REST.clockX, ceil + 30, 14);
+  spikyPlant(156, GF, 0.7);
+  if (L.music) for (let i = 0; i < 3; i++) { const t = (S.time * 0.5 + i / 3) % 1; ctx.globalAlpha = 1 - t; text(i % 2 ? '♪' : '♫', 200 + i * 140 + Math.sin(S.time * 2 + i) * 8, ceil + 56 - t * 24, { size: 14, color: '#8e2f2a' }); ctx.globalAlpha = 1; }
+  // virtuvės durys su apvaliu langeliu (pro jį matosi šefas)
   const kx = REST.kitchenX;
-  text('VIRTUVĖ', kx, G - 112, { size: 11, color: '#5b3f2a' });
-  ctx.fillStyle = '#c98a4a'; rr(kx - 24, G - 104, 48, 104, 3); ctx.fill();
-  ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = 2; rr(kx - 24, G - 104, 48, 104, 3); ctx.stroke();
-  ctx.fillStyle = '#cfe8ff'; ctx.beginPath(); ctx.arc(kx, G - 74, 12, 0, 7); ctx.fill();
-  ctx.save(); ctx.beginPath(); ctx.arc(kx, G - 74, 12, 0, 7); ctx.clip();
-  const chefN = L.chefs, ph = Math.floor(S.time / 2) % chefN, bob = Math.sin(S.time * 3) * 1.5;
-  ctx.fillStyle = ph ? '#e0ac69' : '#ffdbac'; ctx.beginPath(); ctx.arc(kx + (ph ? 3 : -2), G - 68 + bob, 7, 0, 7); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.fillRect(kx - 8 + (ph ? 5 : 0), G - 84 + bob, 12, 9); ctx.beginPath(); ctx.arc(kx - 2 + (ph ? 5 : 0), G - 84 + bob, 6, 0, 7); ctx.fill();
-  ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(kx - 4 + (ph ? 5 : 0), G - 68 + bob, 1.2, 0, 7); ctx.arc(kx + 2 + (ph ? 5 : 0), G - 68 + bob, 1.2, 0, 7); ctx.fill();
+  ctx.fillStyle = '#c98a4a'; rr(kx - 22, GF - 100, 44, 100, 3); ctx.fill();
+  ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = 2; rr(kx - 22, GF - 100, 44, 100, 3); ctx.stroke();
+  ctx.fillStyle = '#2b1d3a'; rr(kx - 19, GF - 97, 38, 11, 3); ctx.fill(); text('VIRTUVĖ', kx, GF - 91, { size: 7.5, color: '#f5c542' });
+  ctx.fillStyle = '#cfe8ff'; ctx.beginPath(); ctx.arc(kx, GF - 66, 11, 0, 7); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.arc(kx, GF - 66, 11, 0, 7); ctx.clip();
+  const ph = Math.floor(S.time / 2) % L.chefs, bob = Math.sin(S.time * 3) * 1.5, ox = ph ? 4 : -1;
+  ctx.fillStyle = ph ? '#e0ac69' : '#ffdbac'; ctx.beginPath(); ctx.arc(kx + ox, GF - 60 + bob, 6.5, 0, 7); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.fillRect(kx - 6 + ox, GF - 76 + bob, 11, 8); ctx.beginPath(); ctx.arc(kx + ox, GF - 76 + bob, 5.5, 0, 7); ctx.fill();
+  ctx.fillStyle = '#222'; ctx.beginPath(); ctx.arc(kx - 2 + ox, GF - 60 + bob, 1.1, 0, 7); ctx.arc(kx + 3 + ox, GF - 60 + bob, 1.1, 0, 7); ctx.fill();
   ctx.restore();
-  ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(kx, G - 74, 12, 0, 7); ctx.stroke();
-  ctx.fillStyle = '#c9a14a'; ctx.beginPath(); ctx.arc(kx - 16, G - 46, 3, 0, 7); ctx.fill();
-  if (R.orders.length) { ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2; for (let i = 0; i < 2; i++) { const t = (S.time + i * 0.5) % 1; ctx.globalAlpha = 1 - t; ctx.beginPath(); ctx.moveTo(kx - 6 + i * 12, G - 106 - t * 16); ctx.quadraticCurveTo(kx - 10 + i * 12, G - 114 - t * 16, kx - 6 + i * 12, G - 122 - t * 16); ctx.stroke(); ctx.globalAlpha = 1; } }
+  ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(kx, GF - 66, 11, 0, 7); ctx.stroke();
+  ctx.fillStyle = '#c9a14a'; ctx.beginPath(); ctx.arc(kx - 14, GF - 44, 2.6, 0, 7); ctx.fill();
+  if (R.orders.length) { ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2; for (let i = 0; i < 2; i++) { const t = (S.time + i * 0.5) % 1; ctx.globalAlpha = 1 - t; ctx.beginPath(); ctx.moveTo(kx - 6 + i * 12, GF - 102 - t * 14); ctx.quadraticCurveTo(kx - 10 + i * 12, GF - 110 - t * 14, kx - 6 + i * 12, GF - 118 - t * 14); ctx.stroke(); ctx.globalAlpha = 1; } }
   // užsakymų priėmėjas už prekystalio
   const cx = REST.counterX;
-  drawPerson(cx + 20, standY(0) - 30, { shirt: '#ffffff', skin: '#f1c27d', hat: 'tophat', hatColor: '#8e2f2a', face: 'happy', role: 'player', walk: 0 });
+  drawPerson(cx + 18, standY(RF) - 30, { shirt: '#ffffff', skin: '#f1c27d', hat: 'tophat', hatColor: '#8e2f2a', face: 'happy', role: 'player', walk: 0 });
   // prekystalis su žvaigžde; ant jo kasa, kava ir gėlė
-  ctx.fillStyle = '#a0632f'; rr(cx - 66, G - 54, 132, 54, 14); ctx.fill();
-  ctx.fillStyle = '#7b4a24'; ctx.fillRect(cx - 70, G - 58, 140, 8);
-  ctx.fillStyle = '#f5c542'; ctx.strokeStyle = '#8a5a00'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, G - 26, 13, 0, 7); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#8a5a00'; ctx.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rad = k % 2 ? 3.8 : 9; ctx.lineTo(cx + Math.cos(a) * rad, G - 26 + Math.sin(a) * rad); } ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#636e72'; ctx.beginPath(); ctx.moveTo(cx - 58, G - 58); ctx.lineTo(cx - 34, G - 58); ctx.lineTo(cx - 38, G - 78); ctx.lineTo(cx - 56, G - 78); ctx.closePath(); ctx.fill(); // kasa
-  ctx.fillStyle = '#55efc4'; ctx.fillRect(cx - 53, G - 76, 12, 6);
-  ctx.fillStyle = '#fff'; rr(cx - 10, G - 72, 12, 14, 2); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx + 3, G - 66, 3.5, -1.2, 1.2); ctx.stroke(); // kava
-  ctx.strokeStyle = 'rgba(120,120,120,0.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(cx - 4, G - 75); ctx.quadraticCurveTo(cx - 7, G - 80, cx - 4, G - 85); ctx.stroke();
-  spikyPlant(cx + 46, G - 58, 0.45);
-  ctx.fillStyle = '#fd79a8'; for (let k = 0; k < 5; k++) { const a = k * 1.256; ctx.beginPath(); ctx.arc(cx + 52 + Math.cos(a) * 3, G - 92 + Math.sin(a) * 3, 2.6, 0, 7); ctx.fill(); }
-  ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(cx + 52, G - 92, 2, 0, 7); ctx.fill();
-  // staliukai su svečiais
-  const tables = REST.tables.slice(0, L.tables);
-  tables.forEach((tx, i) => { chair(tx - 26, G, -1); chair(tx + 26, G, 1); });
-  for (const d of R.diners) if (d.state === 'waiting' || d.state === 'eating') {
-    const o = { shirt: SHIRTS[d.look.shirt].c, skin: d.look.skin, hat: HATS[d.look.hat].k, hatColor: d.look.hatColor, mustache: d.look.mustache, glasses: d.look.glasses, face: d.state === 'eating' ? 'happy' : 'normal' };
-    drawPerson(d.x, d.y + 2, o);
-  }
-  tables.forEach((tx, i) => restTable(tx, G, i % 2 === 1));
+  ctx.fillStyle = '#a0632f'; rr(cx - 55, GF - 54, 110, 54, 14); ctx.fill();
+  ctx.fillStyle = '#7b4a24'; ctx.fillRect(cx - 59, GF - 58, 118, 8);
+  ctx.fillStyle = '#f5c542'; ctx.strokeStyle = '#8a5a00'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, GF - 26, 12, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#8a5a00'; ctx.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rad = k % 2 ? 3.5 : 8.5; ctx.lineTo(cx + Math.cos(a) * rad, GF - 26 + Math.sin(a) * rad); } ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#636e72'; ctx.beginPath(); ctx.moveTo(cx - 50, GF - 58); ctx.lineTo(cx - 28, GF - 58); ctx.lineTo(cx - 32, GF - 76); ctx.lineTo(cx - 48, GF - 76); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#55efc4'; ctx.fillRect(cx - 45, GF - 74, 10, 5);
+  ctx.fillStyle = '#fff'; rr(cx - 6, GF - 70, 11, 12, 2); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx + 6, GF - 64, 3, -1.2, 1.2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(120,120,120,0.6)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(cx - 1, GF - 73); ctx.quadraticCurveTo(cx - 4, GF - 78, cx - 1, GF - 83); ctx.stroke();
+  spikyPlant(cx + 38, GF - 58, 0.42);
+  ctx.fillStyle = '#fd79a8'; for (let k = 0; k < 5; k++) { const a = k * 1.256; ctx.beginPath(); ctx.arc(cx + 44 + Math.cos(a) * 3, GF - 89 + Math.sin(a) * 3, 2.4, 0, 7); ctx.fill(); }
+  ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(cx + 44, GF - 89, 1.8, 0, 7); ctx.fill();
+  // staliukai: kėdės, sėdintys svečiai, staliukai su gėlėmis
+  const seats = restSeats(L.seats), tables = [...new Set(seats.map(st => st.table))];
+  tables.forEach(tx => { chair(tx - REST.seatGap - 4, GF, -1); chair(tx + REST.seatGap + 4, GF, 1); });
+  const look = d => ({ shirt: SHIRTS[d.look.shirt].c, skin: d.look.skin, hat: HATS[d.look.hat].k, hatColor: d.look.hatColor, mustache: d.look.mustache, glasses: d.look.glasses });
+  for (const d of R.diners) if (d.state === 'waiting' || d.state === 'eating') drawPerson(d.x, d.y + 2, Object.assign(look(d), { face: d.state === 'eating' ? 'happy' : 'normal' }));
+  tables.forEach((tx, i) => restTable(tx, GF, i % 2 === 1));
   for (const d of R.diners) {
     if (d.state === 'eating') {
-      drawFood(d.dish.k, d.table - 8, G - 44, 1);
+      drawFood(d.dish.k, d.table + (d.seat < d.table ? -8 : 8), GF - 44, 0.9);
       if (Math.floor(S.time * 1.5 + d.id) % 3 === 0) text('mmm', d.x, d.y - 46, { size: 11, color: '#fff', stroke: '#0007', lw: 3 });
-    } else if (d.state === 'waiting') {
-      bubble(d.x, d.y - 42, 30, 24); drawFood(d.dish.k, d.x, d.y - 52, 0.9);
-    } else if (d.state !== 'gone') {
-      const o = { shirt: SHIRTS[d.look.shirt].c, skin: d.look.skin, hat: HATS[d.look.hat].k, hatColor: d.look.hatColor, mustache: d.look.mustache, glasses: d.look.glasses, face: d.face || 'normal', walk: d.walk };
-      drawPerson(d.x, d.y, o);
-      if (d.state === 'ordering') { bubble(d.x, d.y - 46, 30, 24); drawFood(d.dish.k, d.x, d.y - 56, 0.9); }
-    }
+    } else if (d.state === 'waiting') { bubble(d.x, d.y - 42, 30, 24); drawFood(d.dish.k, d.x, d.y - 52, 0.9); }
   }
+  drawDinersOutside();
   // padavėjas su ūsais ir padėklu
   const w = R.waiter;
   drawPerson(w.x, w.y, { shirt: '#2d3436', skin: '#ffdbac', hat: 'none', mustache: true, face: 'happy', role: 'player', walk: w.path.length ? w.walk : 0 });
-  ctx.fillStyle = '#fff'; ctx.fillRect(w.x - 15, w.y - 6, 5, 14); // rankšluostis ant rankos
-  if (w.carry) {
-    ctx.fillStyle = '#bdc3c7'; ctx.fillRect(w.x + 4, w.y - 34, 26, 3);
-    drawFood(w.carry, w.x + 17, w.y - 38, 0.9);
-  } else { ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.ellipse(w.x + 14, w.y - 2, 3, 10, 0, 0, 7); ctx.fill(); }
+  ctx.fillStyle = '#fff'; ctx.fillRect(w.x - 15, w.y - 6, 5, 14);
+  if (w.carry) { ctx.fillStyle = '#bdc3c7'; ctx.fillRect(w.x + 4, w.y - 34, 26, 3); drawFood(w.carry, w.x + 17, w.y - 38, 0.9); }
+  else { ctx.fillStyle = '#bdc3c7'; ctx.beginPath(); ctx.ellipse(w.x + 14, w.y - 2, 3, 10, 0, 0, 7); ctx.fill(); }
+}
+// restorano svečiai, kurie eina (gatvėje, vestibiulyje, lifte ar restorane)
+function drawDinersOutside() {
+  for (const d of S.rest.diners) {
+    if (d.state === 'waiting' || d.state === 'eating') continue;
+    drawPerson(d.x, d.y, { shirt: SHIRTS[d.look.shirt].c, skin: d.look.skin, hat: HATS[d.look.hat].k, hatColor: d.look.hatColor, mustache: d.look.mustache, glasses: d.look.glasses, face: d.face || 'normal', walk: d.walk });
+    if (d.state === 'ordering') { bubble(d.x, d.y - 46, 30, 24); drawFood(d.dish.k, d.x, d.y - 56, 0.9); }
+  }
 }
 function roomCost() { return Math.round((bal().newRoomCost + bal().newRoomStep * Math.max(0, S.rooms.length - BLD.startRooms)) * lapMult()); }
 function buyRoom() {
@@ -1630,7 +1626,7 @@ function drawWorld() {
   ctx.fillStyle = P.street; ctx.fillRect(-1800, STREET, GEO.worldW + 2600, 600);
   ctx.fillStyle = shade(P.street, 22); ctx.fillRect(-1800, STREET, GEO.worldW + 2600, 10);
   ctx.fillStyle = P.streetLine; for (let x = L2 + 90; x < GEO.worldW + 200; x += 64) ctx.fillRect(x, STREET + 36, 32, 6);
-  drawRestaurant();
+  drawOutdoor();
   // pamatai (pastatas šiek tiek aukščiau gatvės)
   ctx.fillStyle = '#8a8580'; ctx.fillRect(SH.x1 - 12, G, L2 + 24 - SH.x1, STREET - G);
   ctx.fillStyle = 'rgba(0,0,0,0.12)'; for (let x = SH.x1 - 12; x < L2 + 12; x += 28) ctx.fillRect(x, G + 10 + ((x / 28) % 2) * 10, 26, 2);
@@ -1640,8 +1636,9 @@ function drawWorld() {
   ctx.lineTo(L2 + 60, G + 24); ctx.lineTo(L2 + 60, STREET); ctx.lineTo(L2 + 6, STREET); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = '#8a8580'; ctx.lineWidth = 2; ctx.stroke();
   ctx.strokeStyle = '#c9a14a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(L2 + 14, G - 30); ctx.lineTo(L2 + 66, STREET - 26); ctx.stroke(); // turėklas
-  // priestatas su suapvalintu stogu
-  ctx.fillStyle = P.wall; rr(tx2 - 80, floorY(1) - 14, L2 + 12 - (tx2 - 80), FH + 14, 54); ctx.fill();
+  // priestatas (registratūra) plokščiu stogu
+  ctx.fillStyle = P.wall; rr(tx2 - 80, floorY(1) - 14, L2 + 12 - (tx2 - 80), FH + 14, 8); ctx.fill();
+  ctx.fillStyle = shade(P.wall, -25); ctx.fillRect(tx2, floorY(1) - 20, L2 + 16 - tx2, 8);
   ctx.fillRect(tx2 - 80, G - 60, L2 + 12 - (tx2 - 80), 60);
   // bokštas
   ctx.fillStyle = P.wall; ctx.fillRect(SH.x1 - 10, top - 12, tx2 - SH.x1 + 20, G - top + 12);
@@ -1650,17 +1647,20 @@ function drawWorld() {
   ctx.moveTo(SH.cx, top - 26); ctx.lineTo(SH.cx, top - 96);
   ctx.moveTo(SH.cx - 18, top - 104); ctx.lineTo(SH.cx + 18, top - 74); ctx.moveTo(SH.cx + 18, top - 104); ctx.lineTo(SH.cx - 18, top - 74); ctx.stroke();
   ctx.fillStyle = (Math.floor(S.time * 2) % 2) ? '#ff4040' : '#801010'; ctx.beginPath(); ctx.arc(SH.cx, top - 100, 5, 0, 7); ctx.fill();
-  if (restOpen()) { ctx.fillStyle = '#f6e2b3'; ctx.fillRect(SH.x1 - 12, G - 100, 14, 100); }
+  // ant stogo: saulės baterijos ir iškaba „GOLDEN HOTEL“ su žvaigždutėmis ir taure (kaip piešinyje)
+  for (let k = 0; k < 3; k++) { const px = SH.x2 + 4 + k * 34; ctx.fillStyle = '#2c3e7a'; ctx.beginPath(); ctx.moveTo(px, top - 26); ctx.lineTo(px + 30, top - 26); ctx.lineTo(px + 24, top - 52); ctx.lineTo(px + 6, top - 52); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#7fa8ff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(px + 15, top - 26); ctx.lineTo(px + 15, top - 52); ctx.moveTo(px + 3, top - 39); ctx.lineTo(px + 27, top - 39); ctx.stroke(); }
+  const sgx1 = SH.x2 + 112, sgx2 = tx2 + 4, sgy = top - 100;
+  ctx.fillStyle = shade(P.wall, -30); ctx.fillRect(sgx1 + 26, sgy + 60, 7, 38); ctx.fillRect(sgx2 - 33, sgy + 60, 7, 38);
+  ctx.fillStyle = '#2b1d3a'; rr(sgx1, sgy, sgx2 - sgx1, 66, 10); ctx.fill();
+  ctx.strokeStyle = P.sign; ctx.lineWidth = 3; rr(sgx1 + 4, sgy + 4, sgx2 - sgx1 - 8, 58, 8); ctx.stroke();
+  text('GOLDEN HOTEL', (sgx1 + sgx2) / 2 - 12, sgy + 25, { size: 24, color: P.sign });
+  const stars = hotelLevelSum();
+  for (let i = 0; i < 7; i++) text('★', (sgx1 + sgx2) / 2 - 76 + i * 18, sgy + 48, { size: 14, color: i <= stars ? '#ffd84a' : 'rgba(255,255,255,0.2)' });
+  { const tx = sgx2 - 30, ty = sgy + 36; ctx.fillStyle = '#f5c542'; ctx.beginPath(); ctx.moveTo(tx - 10, ty - 12); ctx.lineTo(tx + 10, ty - 12); ctx.quadraticCurveTo(tx + 8, ty + 2, tx, ty + 3); ctx.quadraticCurveTo(tx - 8, ty + 2, tx - 10, ty - 12); ctx.fill();
+    ctx.fillRect(tx - 2, ty + 3, 4, 6); ctx.fillRect(tx - 7, ty + 9, 14, 3); text('×' + S.trophies.length, tx, ty + 20, { size: 9, color: '#ffe066' }); }
   // 0 aukštas: laukiamasis + registratūra
   drawLobby();
-  // GOLD HOTEL iškaba ant priestato stogo
-  const sx1 = tx2 + 90, sx2 = L2 - 60, sy = floorY(1) - 104;
-  ctx.fillStyle = shade(P.wall, -30); ctx.fillRect(sx1 + 40, sy + 60, 8, 34); ctx.fillRect(sx2 - 48, sy + 60, 8, 34);
-  ctx.fillStyle = '#2b1d3a'; rr(sx1, sy, sx2 - sx1, 66, 10); ctx.fill();
-  ctx.strokeStyle = P.sign; ctx.lineWidth = 3; rr(sx1 + 4, sy + 4, sx2 - sx1 - 8, 58, 8); ctx.stroke();
-  text('GOLD HOTEL', (sx1 + sx2) / 2, sy + 26, { size: 28, color: P.sign });
-  const stars = hotelLevelSum();
-  for (let i = 0; i < 7; i++) text('★', (sx1 + sx2) / 2 - 54 + i * 18, sy + 50, { size: 15, color: i <= stars ? '#ffd84a' : 'rgba(255,255,255,0.2)' });
   // liftas per visus aukštus
   ctx.fillStyle = shade(P.wall, -40); ctx.fillRect(SH.x1, top, SH.x2 - SH.x1, G - top);
   ctx.fillStyle = '#9aa0a6'; ctx.fillRect(SH.x1 + 6, top, 3, G - top); ctx.fillRect(SH.x2 - 9, top, 3, G - top);
@@ -1670,15 +1670,25 @@ function drawWorld() {
     ctx.fillStyle = 'rgba(0,0,0,0.5)'; rr(SH.cx - 13, floorY(f) - FH + 12, 26, 20, 5); ctx.fill();
     text(f === 0 ? '0' : String(f), SH.cx, floorY(f) - FH + 22, { size: 13, color: '#ffd84a' });
   }
-  const riders = [S.player, ...S.guests.filter(g => g.state !== 'inRoom' && g.state !== 'gone'), ...(S.insp ? [S.insp] : [])].filter(q => inShaft(q.x));
+  const riders = [S.player, ...S.guests.filter(g => g.state !== 'inRoom' && g.state !== 'gone'), ...S.rest.diners, ...(S.insp ? [S.insp] : [])].filter(q => inShaft(q.x));
+  // lifto durys kiekviename aukšte (atsidaro, kai kabina tame aukšte) ir iškvietimo mygtukai
+  for (let f = 0; f <= nF; f++) {
+    const fy = floorY(f), here = riders.some(q => Math.abs(q.y - standY(f)) < 30);
+    const open = here ? 26 : 0;
+    ctx.fillStyle = '#b2bec3'; ctx.fillRect(SH.x1 + 6, fy - 86, 34 - open, 86); ctx.fillRect(SH.x2 - 40 + open, fy - 86, 34 - open, 86);
+    ctx.strokeStyle = '#7f8c8d'; ctx.lineWidth = 1.5; ctx.strokeRect(SH.x1 + 6, fy - 86, 34 - open, 86); ctx.strokeRect(SH.x2 - 40 + open, fy - 86, 34 - open, 86);
+    ctx.fillStyle = '#636e72'; rr(SH.x2 + 3, fy - 62, 8, 18, 2); ctx.fill();
+    ctx.fillStyle = here ? '#ffd84a' : '#dfe6e9'; ctx.beginPath(); ctx.arc(SH.x2 + 7, fy - 57, 2, 0, 7); ctx.arc(SH.x2 + 7, fy - 49, 2, 0, 7); ctx.fill();
+  }
   for (const q of riders) {
     ctx.fillStyle = 'rgba(255,226,150,0.35)'; rr(SH.x1 + 4, q.y - 50, SH.x2 - SH.x1 - 8, 72, 5); ctx.fill();
     ctx.strokeStyle = '#c9a14a'; ctx.lineWidth = 2.5; rr(SH.x1 + 4, q.y - 50, SH.x2 - SH.x1 - 8, 72, 5); ctx.stroke();
   }
   // aukštų perdangos
   for (let f = 1; f <= nF + 1; f++) { ctx.fillStyle = P.wall; ctx.fillRect(SH.x2, floorY(f) - 4, tx2 - SH.x2, 12); }
-  // kambariai
+  // kambariai ir restoranas
   for (const r of S.rooms) drawRoom(r);
+  drawRestaurant();
   const used = S.rooms.length % BLD.roomsPerFloor;
   if (used) for (let col = used; col < BLD.roomsPerFloor; col++) {
     const x = GEO.roomsX1 + col * BLD.roomWidth, y = floorY(nF) - FH;
@@ -1698,12 +1708,62 @@ function drawWorld() {
   drawDesk();
 }
 
+/* ---------- Lauke (pagal piešinį): krūmai, medžiai, suoliukas, žolė, „P“ aikštelė su mašinomis, kalnelis, saulė, lietaus debesis ---------- */
+function drawOutdoor() {
+  const id = world().id, sky = world().palette.sky || '#9ed8ff';
+  const green = id === 'robotai' ? '#5d8c7a' : id === 'kosmosas' ? '#6a4fb3' : id === 'afrika' ? '#8aa83c' : '#3f9e4f';
+  // saulė
+  const sunX = GEO.worldW - 110, sunY = worldTop() + 90;
+  ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 4;
+  for (let k = 0; k < 10; k++) { const a = k * Math.PI / 5 + S.time * 0.2; ctx.beginPath(); ctx.moveTo(sunX + Math.cos(a) * 46, sunY + Math.sin(a) * 46); ctx.lineTo(sunX + Math.cos(a) * 62, sunY + Math.sin(a) * 62); ctx.stroke(); }
+  ctx.fillStyle = id === 'kosmosas' ? '#ffb142' : '#ffd84a'; ctx.beginPath(); ctx.arc(sunX, sunY, 36, 0, 7); ctx.fill();
+  // lietaus debesis su lašais
+  if (id !== 'kosmosas' && id !== 'afrika') {
+    const rx = 1230, ry = worldTop() + 190;
+    ctx.fillStyle = '#9aa5b1'; ctx.beginPath(); ctx.ellipse(rx, ry, 60, 22, 0, 0, 7); ctx.ellipse(rx - 30, ry - 12, 30, 20, 0, 0, 7); ctx.ellipse(rx + 22, ry - 18, 34, 24, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#4a90e2';
+    for (let i = 0; i < 9; i++) { const dx = rx - 50 + (i % 5) * 25 + (i > 4 ? 12 : 0), dy = ry + 24 + ((S.time * 140 + i * 47) % 150); ctx.beginPath(); ctx.moveTo(dx, dy - 7); ctx.quadraticCurveTo(dx + 4, dy + 2, dx, dy + 3); ctx.quadraticCurveTo(dx - 4, dy + 2, dx, dy - 7); ctx.fill(); }
+  }
+  // kalnelis fone
+  ctx.fillStyle = shade(green, 35); ctx.beginPath(); ctx.ellipse(1830, STREET + 4, 360, 90, 0, Math.PI, 0); ctx.fill();
+  // krūmai (zigzagu)
+  ctx.fillStyle = shade(green, -10);
+  ctx.beginPath(); ctx.moveTo(1176, STREET);
+  for (let x = 1176; x <= 1290; x += 12) ctx.lineTo(x + 6, STREET - 22 - ((x / 12) % 2) * 10), ctx.lineTo(x + 12, STREET - 8);
+  ctx.lineTo(1290, STREET); ctx.closePath(); ctx.fill();
+  // medžiai
+  const tree = (x, s) => {
+    ctx.fillStyle = '#7a4a22'; ctx.fillRect(x - 6 * s, STREET - 70 * s, 12 * s, 70 * s);
+    ctx.fillStyle = green; ctx.beginPath();
+    for (const [a, b, r] of [[0, -110, 34], [-28, -92, 26], [28, -92, 26], [-18, -128, 24], [18, -128, 24], [0, -80, 26]]) ctx.arc(x + a * s, STREET + b * s, r * s, 0, 7);
+    ctx.fill();
+  };
+  tree(1336, 1); tree(1510, 1.08);
+  // suoliukas tarp medžių
+  ctx.fillStyle = '#a0632f'; ctx.fillRect(1394, STREET - 24, 64, 6); ctx.fillRect(1394, STREET - 42, 64, 6);
+  ctx.fillStyle = '#5b3417'; ctx.fillRect(1398, STREET - 24, 4, 24); ctx.fillRect(1450, STREET - 24, 4, 24); ctx.fillRect(1398, STREET - 44, 4, 22); ctx.fillRect(1450, STREET - 44, 4, 22);
+  // žolės kuokšteliai
+  ctx.strokeStyle = shade(green, -20); ctx.lineWidth = 2;
+  for (const gx of [1300, 1372, 1474, 1552, 1590]) { ctx.beginPath(); ctx.moveTo(gx - 5, STREET); ctx.lineTo(gx - 3, STREET - 9); ctx.moveTo(gx, STREET); ctx.lineTo(gx, STREET - 12); ctx.moveTo(gx + 5, STREET); ctx.lineTo(gx + 3, STREET - 9); ctx.stroke(); }
+  // stovėjimo aikštelė su „P“ ženklu ir mašinomis
+  ctx.fillStyle = '#555b61'; ctx.fillRect(1612, STREET, 340, 48);
+  ctx.fillStyle = '#f5f6fa'; for (let x = 1612; x <= 1952; x += 68) ctx.fillRect(x, STREET + 2, 4, 30);
+  ctx.fillStyle = '#7f8c8d'; ctx.fillRect(1594, STREET - 70, 4, 70);
+  ctx.fillStyle = '#0984e3'; rr(1580, STREET - 98, 32, 32, 4); ctx.fill(); text('P', 1596, STREET - 82, { size: 22, color: '#fff' });
+  const car = (x, c) => {
+    ctx.fillStyle = c; rr(x - 30, STREET - 24, 60, 16, 5); ctx.fill(); rr(x - 18, STREET - 37, 34, 15, 6); ctx.fill();
+    ctx.fillStyle = '#cfe8ff'; ctx.fillRect(x - 14, STREET - 34, 13, 9); ctx.fillRect(x + 1, STREET - 34, 12, 9);
+    ctx.fillStyle = '#2d3436'; ctx.beginPath(); ctx.arc(x - 18, STREET - 7, 6, 0, 7); ctx.arc(x + 18, STREET - 7, 6, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffeaa7'; ctx.fillRect(x + 27, STREET - 20, 3, 4);
+  };
+  car(1646, '#e74c3c'); car(1782, '#f1c40f'); car(1918, '#00b894');
+}
 /* ---------- 0 aukštas pagal piešinius: laukiamasis (kairėje) ir registratūra (dešinėje) ---------- */
 function drawLobby() {
   const P = world().palette, SH = GEO.shaft, tx2 = towerX2(), L2 = GEO.lobbyX2, ceil = floorY(1) + 6, wain = 52;
   // sienos
   ctx.fillStyle = P.lobby; ctx.fillRect(SH.x2, ceil, tx2 - SH.x2, G - ceil);
-  rr(tx2 - 40, ceil, L2 - (tx2 - 40), G - ceil, 40); ctx.fill(); ctx.fillRect(tx2 - 40, G - 60, L2 - (tx2 - 40), 60);
+  rr(tx2 - 40, ceil, L2 - (tx2 - 40), G - ceil, 6); ctx.fill(); ctx.fillRect(tx2 - 40, G - 60, L2 - (tx2 - 40), 60);
   ctx.fillStyle = 'rgba(255,255,255,0.10)'; // laukiamojo tapetai — taškeliai
   for (let x = SH.x2 + 14; x < tx2 - 8; x += 24) for (let y = ceil + 14; y < G - wain - 8; y += 22) { ctx.beginPath(); ctx.arc(x + ((y / 22) % 2) * 12, y, 2.5, 0, 7); ctx.fill(); }
   ctx.fillStyle = 'rgba(255,255,255,0.08)'; // registratūros tapetai — juostos
@@ -2168,7 +2228,7 @@ function render() {
   }
 }
 /* --- Kamera: seka savininką; „Visas viešbutis“ parodo visus aukštus --- */
-function fitZoom() { return Math.min(W / (restOpen() ? CONFIG.camera.zoomOutWidthRest : CONFIG.camera.zoomOutWidth), H / (worldBottom() - worldTop())); }
+function fitZoom() { return Math.min(W / CONFIG.camera.zoomOutWidth, H / (worldBottom() - worldTop())); }
 function camTarget() {
   const z = S.zoomOut ? fitZoom() : CONFIG.camera.zoom;
   const vw = W / z, vh = H / z, p = S.player;

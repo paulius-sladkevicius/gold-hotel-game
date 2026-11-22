@@ -18,7 +18,7 @@
 | U | tobulinimai |
 
 ## Golden restoranas
-Parduotuvėje galima atidaryti restoraną (kairėje nuo lifto) ir jį gerinti iki 7 žvaigždučių. Svečiai ateina iš gatvės, užsisako prie prekystalio, šefai gamina virtuvėje, padavėjas atneša maistą, svečiai pavalgo ir sumoka.
+Parduotuvėje galima atidaryti restoraną (1 aukšte, virš laukiamojo) ir jį gerinti iki 7 žvaigždučių. Kambariai yra nuo 2 aukšto (po 2 aukšte, iki 12). Svečiai ateina iš gatvės, užsisako prie prekystalio, šefai gamina virtuvėje, padavėjas atneša maistą, svečiai pavalgo ir sumoka.
 
 ## Struktūra
 - Visas žaidimas yra viename `index.html` faile (HTML + CSS + JS, Canvas).
