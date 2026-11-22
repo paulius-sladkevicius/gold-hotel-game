@@ -301,7 +301,7 @@ const CONFIG = {
   startMoney: 0,
   // Pastatas (vaizdas iš šono): aukštai su kambariais, liftas kairėje
   building: { floorHeight: 150, roomWidth: 210, roomsPerFloor: 2, startRooms: 6, maxRooms: 14, liftSpeed: 240 },
-  camera: { zoom: 1.75, follow: 5, lookAhead: 80 }, // priartinimas, sekimo greitis, kiek pažiūrėti į priekį prie stalo
+  camera: { zoom: 1.6, follow: 5, lookAhead: 140 }, // priartinimas, sekimo greitis, kiek pažiūrėti į priekį prie stalo
   player: { speed: 230, stunTime: 2.2 },
   guest: {
     speed: 110,
@@ -517,23 +517,27 @@ const FH = BLD.floorHeight;                // aukšto aukštis
 const GEO = {
   shaft: { x1: 60, x2: 140, cx: 100 },     // liftas per visus aukštus
   roomsX1: 140,                            // kambariai prasideda už lifto
-  lobbyX2: 1000,                           // vestibiulio dešinė siena su įėjimu
+  lobbyX2: 1100,                           // vestibiulio dešinė siena su įėjimu
   desk: { x: 772, w: 58, h: 46 },
   deskZone: { x1: 696, x2: 770 },          // čia stovėdamas aptarnauji svečią
   front: { x: 866 },                       // svečio vieta prie stalo
   playerStartX: 734,
-  worldW: 1320
+  worldW: 1460
 };
 const floorY = f => G - f * FH;            // f aukšto grindų paviršius
 const standY = f => floorY(f) - 20;        // žmogeliuko centras stovint ant f aukšto
 function floorsCount() { return Math.max(1, Math.ceil(S.rooms.length / BLD.roomsPerFloor)); }
 function towerX2() { return GEO.roomsX1 + BLD.roomsPerFloor * BLD.roomWidth; }
 function worldTop() { return floorY(floorsCount() + 1) - 120; }
-function worldBottom() { return G + 70; }
+const STREET = G + 36;                     // gatvė žemiau — į viešbutį lipama laiptais
+const streetY = STREET - 20;               // žmogeliuko centras gatvėje
+const STAIR_TOP = () => ({ x: GEO.lobbyX2 + 4, y: standY(0) });
+const STAIR_BOTTOM = () => ({ x: GEO.lobbyX2 + 62, y: streetY });
+function worldBottom() { return STREET + 60; }
 function floorOfY(y) { return clamp(Math.round((G - 20 - y) / FH), 0, floorsCount()); }
 function onFloorLevel(q) { return Math.abs(q.y - standY(floorOfY(q.y))) < 1; }
 function inShaft(x) { return x >= GEO.shaft.x1 + 8 && x <= GEO.shaft.x2 - 8; }
-function queueSpot(i) { return i === 0 ? { x: GEO.front.x, y: standY(0) } : { x: 1046 + (i - 1) * 34, y: standY(0) }; }
+function queueSpot(i) { return i === 0 ? { x: GEO.front.x, y: standY(0) } : { x: GEO.lobbyX2 + 96 + (i - 1) * 34, y: streetY }; }
 function makeRoom(id) {
   const f = 1 + Math.floor(id / BLD.roomsPerFloor), col = id % BLD.roomsPerFloor;
   const x = GEO.roomsX1 + col * BLD.roomWidth, y = floorY(f) - FH;
@@ -673,7 +677,7 @@ function makeGuest(kind) {
   else { let tries = 0; while (matchesWanted(look) && tries++ < 30) look = randomLook(); }
 
   const g = {
-    id: S.nextGuestId++, bad, wanted, look, x: EXIT_X(), y: standY(0), state: 'queue', path: [],
+    id: S.nextGuestId++, bad, wanted, look, x: EXIT_X(), y: streetY, state: 'queue', path: [],
     items: [], scanned: false, scanResult: null, patience: 0, room: null, timer: 0, timerMax: 1,
     face: 'normal', rich: false, pocket: false, weirdBehavior: false, behavior: pick(['sleep', 'read', 'dance', 'knit', 'tv']),
     stealth, bob: Math.random() * 6, speed: CONFIG.guest.speed
@@ -716,8 +720,20 @@ function pathToRoom(room) { return [{ x: GEO.shaft.cx, y: standY(0) }, { x: GEO.
 function pathToExit(fromFloor) {
   const p = [];
   if (fromFloor > 0) p.push({ x: GEO.shaft.cx, y: standY(fromFloor) }, { x: GEO.shaft.cx, y: standY(0) });
-  p.push({ x: EXIT_X(), y: standY(0) });
+  p.push(STAIR_TOP(), STAIR_BOTTOM(), { x: EXIT_X(), y: streetY });
   return p;
+}
+// iš vestibiulio / nuo laiptų / iš gatvės — į gatvę
+function pathOutside(g) {
+  if (g.x <= STAIR_TOP().x + 0.5) return [STAIR_TOP(), STAIR_BOTTOM(), { x: EXIT_X(), y: streetY }];
+  if (g.x < STAIR_BOTTOM().x - 0.5) return [STAIR_BOTTOM(), { x: EXIT_X(), y: streetY }];
+  return [{ x: EXIT_X(), y: streetY }];
+}
+// iš gatvės į vestibiulį (lipant laiptais)
+function pathInside(g, target) {
+  if (g.x > STAIR_BOTTOM().x + 0.5) return [STAIR_BOTTOM(), STAIR_TOP(), target];
+  if (g.x > STAIR_TOP().x + 0.5) return [STAIR_TOP(), target];
+  return [target];
 }
 function moveAlong(g, dt) {
   if (!g.path.length) return true;
@@ -856,7 +872,7 @@ function admitGuest() {
 function refuseGuest() {
   const g = deskGuest(); if (!g) return;
   S.queue.shift();
-  g.state = 'leaving'; g.face = g.bad ? 'angry' : 'sad'; g.path = [{ x: EXIT_X(), y: standY(0) }];
+  g.state = 'leaving'; g.face = g.bad ? 'angry' : 'sad'; g.path = pathOutside(g);
   if (g.wanted) { S.paper.status = 'gone'; scheduleNextIssue(); }
   log(g.bad ? 'Neįleidai svečio. Jis išėjo bambėdamas…' : 'Neįleidai svečio. Jis nuliūdęs išėjo.');
 }
@@ -967,13 +983,13 @@ function update(dt) {
   // svečiai eilėje (lauke, prie įėjimo)
   S.queue.forEach((g, i) => {
     if (g.state !== 'queue') return;
-    g.path = [queueSpot(i)];
+    g.path = i === 0 ? pathInside(g, queueSpot(0)) : [queueSpot(i)];
     moveAlong(g, dt);
     g.patience -= dt;
     if (g.patience <= 0) {
       S.queue.splice(S.queue.indexOf(g), 1);
       g.state = 'leaving'; g.face = 'sad';
-      g.path = [{ x: EXIT_X(), y: standY(0) }];
+      g.path = pathOutside(g);
       if (g.wanted) { S.paper.status = 'gone'; scheduleNextIssue(); }
       if (S.scan && S.scan.guest === g) S.scan = null;
       log('Svečias per ilgai laukė ir išėjo.');
@@ -1150,7 +1166,7 @@ function startInspector() {
   const path = [];
   if (pf > 0) path.push({ x: GEO.shaft.cx, y: standY(0) }, { x: GEO.shaft.cx, y: standY(pf) });
   path.push({ x: tx, y: standY(pf) });
-  S.insp = { x: EXIT_X(), y: standY(0), path, speed: CONFIG.inspectorSpeed, arrived: false };
+  S.insp = { x: EXIT_X(), y: streetY, path: [STAIR_BOTTOM(), STAIR_TOP(), ...path], speed: CONFIG.inspectorSpeed, arrived: false };
   log('Viskas patobulinta! Atvyksta inspektorius…');
   sfx('win');
   dirtyPanel = true;
@@ -1373,59 +1389,45 @@ function drawWorld() {
   // dangus
   const gr = ctx.createLinearGradient(0, worldTop() - 200, 0, G);
   gr.addColorStop(0, shade(sky, -45)); gr.addColorStop(1, shade(sky, 25));
-  ctx.fillStyle = gr; ctx.fillRect(-600, worldTop() - 900, GEO.worldW + 1200, G - worldTop() + 900);
+  ctx.fillStyle = gr; ctx.fillRect(-600, worldTop() - 900, GEO.worldW + 1200, STREET - worldTop() + 900);
   if (world().id === 'kosmosas') { ctx.fillStyle = '#fff'; for (let i = 0; i < 120; i++) ctx.fillRect(-300 + (i * 137) % (GEO.worldW + 600), worldTop() - 600 + (i * 89) % (G - worldTop() + 600), 2, 2); }
   else {
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
     for (let i = 0; i < 7; i++) { const cx = ((i * 260 + S.time * 6) % (GEO.worldW + 500)) - 250, cy = worldTop() + 60 + (i * 97) % 380; ctx.beginPath(); ctx.ellipse(cx, cy, 46, 16, 0, 0, 7); ctx.ellipse(cx + 30, cy - 10, 30, 16, 0, 0, 7); ctx.fill(); }
   }
   // žemė ir gatvė
-  ctx.fillStyle = P.street; ctx.fillRect(-600, G, GEO.worldW + 1200, 600);
-  ctx.fillStyle = shade(P.street, 22); ctx.fillRect(-600, G, GEO.worldW + 1200, 12);
-  ctx.fillStyle = P.streetLine; for (let x = L2 + 40; x < GEO.worldW + 200; x += 64) ctx.fillRect(x, G + 38, 32, 6);
-  // priestatas su vestibiuliu (suapvalintas stogas, kaip piešinyje)
+  ctx.fillStyle = P.street; ctx.fillRect(-600, STREET, GEO.worldW + 1200, 600);
+  ctx.fillStyle = shade(P.street, 22); ctx.fillRect(-600, STREET, GEO.worldW + 1200, 10);
+  ctx.fillStyle = P.streetLine; for (let x = L2 + 90; x < GEO.worldW + 200; x += 64) ctx.fillRect(x, STREET + 36, 32, 6);
+  // pamatai (pastatas šiek tiek aukščiau gatvės)
+  ctx.fillStyle = '#8a8580'; ctx.fillRect(SH.x1 - 12, G, L2 + 24 - SH.x1, STREET - G);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)'; for (let x = SH.x1 - 12; x < L2 + 12; x += 28) ctx.fillRect(x, G + 10 + ((x / 28) % 2) * 10, 26, 2);
+  // laiptai prie įėjimo
+  ctx.fillStyle = '#b8b2a8';
+  ctx.beginPath(); ctx.moveTo(L2 + 6, G); ctx.lineTo(L2 + 24, G); ctx.lineTo(L2 + 24, G + 12); ctx.lineTo(L2 + 42, G + 12); ctx.lineTo(L2 + 42, G + 24);
+  ctx.lineTo(L2 + 60, G + 24); ctx.lineTo(L2 + 60, STREET); ctx.lineTo(L2 + 6, STREET); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#8a8580'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.strokeStyle = '#c9a14a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(L2 + 14, G - 30); ctx.lineTo(L2 + 66, STREET - 26); ctx.stroke(); // turėklas
+  // priestatas su suapvalintu stogu
   ctx.fillStyle = P.wall; rr(tx2 - 80, floorY(1) - 14, L2 + 12 - (tx2 - 80), FH + 14, 54); ctx.fill();
   ctx.fillRect(tx2 - 80, G - 60, L2 + 12 - (tx2 - 80), 60);
   // bokštas
   ctx.fillStyle = P.wall; ctx.fillRect(SH.x1 - 10, top - 12, tx2 - SH.x1 + 20, G - top + 12);
   ctx.fillStyle = shade(P.wall, -25); rr(SH.x1 - 20, top - 26, tx2 - SH.x1 + 40, 16, 5); ctx.fill();
-  // antena ant stogo virš lifto
   ctx.strokeStyle = shade(P.wall, -30); ctx.lineWidth = 4; ctx.beginPath();
   ctx.moveTo(SH.cx, top - 26); ctx.lineTo(SH.cx, top - 96);
   ctx.moveTo(SH.cx - 18, top - 104); ctx.lineTo(SH.cx + 18, top - 74); ctx.moveTo(SH.cx + 18, top - 104); ctx.lineTo(SH.cx - 18, top - 74); ctx.stroke();
   ctx.fillStyle = (Math.floor(S.time * 2) % 2) ? '#ff4040' : '#801010'; ctx.beginPath(); ctx.arc(SH.cx, top - 100, 5, 0, 7); ctx.fill();
-  // vestibiulio vidus (0 aukštas)
-  ctx.fillStyle = P.lobby; ctx.fillRect(SH.x2, floorY(1) + 6, tx2 - SH.x2, FH - 6);
-  rr(tx2 - 40, floorY(1) + 6, L2 - (tx2 - 40), FH - 6, 40); ctx.fill(); ctx.fillRect(tx2 - 40, G - 50, L2 - (tx2 - 40), 50);
-  ctx.fillStyle = 'rgba(255,255,255,0.08)'; for (let x = SH.x2 + 12; x < L2 - 30; x += 26) ctx.fillRect(x, floorY(1) + 20, 10, FH - 34);
-  ctx.fillStyle = P.lobbyTile; ctx.fillRect(SH.x2, G - 12, L2 - SH.x2, 12);
-  ctx.fillStyle = shade(P.lobbyTile, -18); for (let x = SH.x2; x < L2; x += 32) ctx.fillRect(x, G - 12, 16, 12);
-  // įėjimas
-  ctx.fillStyle = P.lobby; ctx.fillRect(L2 - 2, G - 100, 16, 100);
-  ctx.fillStyle = P.wallLight; ctx.fillRect(L2 - 4, G - 104, 20, 6);
-  ctx.fillStyle = '#c0392b'; ctx.fillRect(L2 - 30, G - 4, 70, 4);
-  text('ĮĖJIMAS', L2 + 50, G - 118, { size: 13, color: '#fff', stroke: '#0009', lw: 4 });
+  // 0 aukštas: laukiamasis + registratūra
+  drawLobby();
   // GOLD HOTEL iškaba ant priestato stogo
-  const sx1 = tx2 + 70, sx2 = L2 - 40, sy = floorY(1) - 104;
-  ctx.fillStyle = shade(P.wall, -30); ctx.fillRect(sx1 + 30, sy + 60, 8, 34); ctx.fillRect(sx2 - 38, sy + 60, 8, 34);
+  const sx1 = tx2 + 90, sx2 = L2 - 60, sy = floorY(1) - 104;
+  ctx.fillStyle = shade(P.wall, -30); ctx.fillRect(sx1 + 40, sy + 60, 8, 34); ctx.fillRect(sx2 - 48, sy + 60, 8, 34);
   ctx.fillStyle = '#2b1d3a'; rr(sx1, sy, sx2 - sx1, 66, 10); ctx.fill();
   ctx.strokeStyle = P.sign; ctx.lineWidth = 3; rr(sx1 + 4, sy + 4, sx2 - sx1 - 8, 58, 8); ctx.stroke();
   text('GOLD HOTEL', (sx1 + sx2) / 2, sy + 26, { size: 28, color: P.sign });
   const stars = hotelLevelSum();
   for (let i = 0; i < 7; i++) text('★', (sx1 + sx2) / 2 - 54 + i * 18, sy + 50, { size: 15, color: i <= stars ? '#ffd84a' : 'rgba(255,255,255,0.2)' });
-  // vestibiulio dekoracijos
-  if (S.levels.comfort >= 1) { // kavos aparatas
-    const cx = 610; ctx.fillStyle = '#636e72'; rr(cx, G - 62, 34, 50, 4); ctx.fill(); ctx.fillStyle = '#2d3436'; ctx.fillRect(cx + 6, G - 40, 22, 16);
-    ctx.fillStyle = '#fff'; ctx.fillRect(cx + 12, G - 34, 10, 9); ctx.fillStyle = '#e17055'; ctx.beginPath(); ctx.arc(cx + 17, G - 52, 4, 0, 7); ctx.fill();
-    ctx.fillStyle = '#4a2c12'; ctx.fillRect(cx - 4, G - 14, 42, 4);
-  }
-  if (S.levels.comfort >= 2) { // restoranėlio staliukas
-    const tx = 470; ctx.fillStyle = '#fff'; rr(tx - 34, G - 46, 68, 8, 3); ctx.fill(); ctx.fillStyle = '#d63031'; ctx.fillRect(tx - 34, G - 40, 68, 6);
-    ctx.fillStyle = '#5b3417'; ctx.fillRect(tx - 3, G - 34, 6, 22); ctx.fillRect(tx - 18, G - 14, 36, 3);
-    ctx.fillStyle = '#ffeaa7'; ctx.beginPath(); ctx.arc(tx, G - 52, 5, 0, 7); ctx.fill();
-  }
-  if (S.levels.traffic >= 1) { plant(185, G); plant(L2 - 40, G); }
-  if (S.levels.traffic >= 2) { plant(540, G); }
   // liftas per visus aukštus
   ctx.fillStyle = shade(P.wall, -40); ctx.fillRect(SH.x1, top, SH.x2 - SH.x1, G - top);
   ctx.fillStyle = '#9aa0a6'; ctx.fillRect(SH.x1 + 6, top, 3, G - top); ctx.fillRect(SH.x2 - 9, top, 3, G - top);
@@ -1435,7 +1437,6 @@ function drawWorld() {
     ctx.fillStyle = 'rgba(0,0,0,0.5)'; rr(SH.cx - 13, floorY(f) - FH + 12, 26, 20, 5); ctx.fill();
     text(f === 0 ? '0' : String(f), SH.cx, floorY(f) - FH + 22, { size: 13, color: '#ffd84a' });
   }
-  // lifto kabinos aplink tuos, kas važiuoja
   const riders = [S.player, ...S.guests.filter(g => g.state !== 'inRoom' && g.state !== 'gone'), ...(S.insp ? [S.insp] : [])].filter(q => inShaft(q.x));
   for (const q of riders) {
     ctx.fillStyle = 'rgba(255,226,150,0.35)'; rr(SH.x1 + 4, q.y - 50, SH.x2 - SH.x1 - 8, 72, 5); ctx.fill();
@@ -1445,7 +1446,6 @@ function drawWorld() {
   for (let f = 1; f <= nF + 1; f++) { ctx.fillStyle = P.wall; ctx.fillRect(SH.x2, floorY(f) - 4, tx2 - SH.x2, 12); }
   // kambariai
   for (const r of S.rooms) drawRoom(r);
-  // neužstatyta vieta paskutiniame aukšte
   const used = S.rooms.length % BLD.roomsPerFloor;
   if (used) for (let col = used; col < BLD.roomsPerFloor; col++) {
     const x = GEO.roomsX1 + col * BLD.roomWidth, y = floorY(nF) - FH;
@@ -1457,7 +1457,6 @@ function drawWorld() {
     text('Statybos', x + BLD.roomWidth / 2, y + FH / 2, { size: 16, color: '#ffd23f', stroke: '#000a', lw: 4 });
     ctx.fillStyle = P.wall; ctx.fillRect(x, y, 8, FH - 86);
   }
-  // kameros (stebėjimo 2 lygis)
   if (S.levels.vision >= 2) for (let f = 1; f <= nF; f++) {
     const cx = SH.x2 + 18, cy = floorY(f) - FH + 18;
     ctx.fillStyle = '#2d3436'; rr(cx - 10, cy - 6, 20, 12, 3); ctx.fill(); ctx.fillRect(cx - 2, cy - 12, 4, 6);
@@ -1465,35 +1464,229 @@ function drawWorld() {
   }
   drawDesk();
 }
-function plant(x, ground) {
-  ctx.fillStyle = '#8e5a2b'; rr(x - 11, ground - 20, 22, 20, 3); ctx.fill();
-  ctx.fillStyle = '#27ae60'; ctx.beginPath(); ctx.arc(x, ground - 34, 13, 0, 7); ctx.arc(x - 10, ground - 26, 9, 0, 7); ctx.arc(x + 10, ground - 26, 9, 0, 7); ctx.fill();
+
+/* ---------- 0 aukštas pagal piešinius: laukiamasis (kairėje) ir registratūra (dešinėje) ---------- */
+function drawLobby() {
+  const P = world().palette, SH = GEO.shaft, tx2 = towerX2(), L2 = GEO.lobbyX2, ceil = floorY(1) + 6, wain = 52;
+  // sienos
+  ctx.fillStyle = P.lobby; ctx.fillRect(SH.x2, ceil, tx2 - SH.x2, G - ceil);
+  rr(tx2 - 40, ceil, L2 - (tx2 - 40), G - ceil, 40); ctx.fill(); ctx.fillRect(tx2 - 40, G - 60, L2 - (tx2 - 40), 60);
+  ctx.fillStyle = 'rgba(255,255,255,0.10)'; // laukiamojo tapetai — taškeliai
+  for (let x = SH.x2 + 14; x < tx2 - 8; x += 24) for (let y = ceil + 14; y < G - wain - 8; y += 22) { ctx.beginPath(); ctx.arc(x + ((y / 22) % 2) * 12, y, 2.5, 0, 7); ctx.fill(); }
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; // registratūros tapetai — juostos
+  for (let x = tx2 + 12; x < L2 - 30; x += 26) ctx.fillRect(x, ceil + 14, 10, G - wain - ceil - 18);
+  // lambris su juostele (kaip piešinyje — linija per visą sieną)
+  ctx.fillStyle = shade(P.lobby, -24); ctx.fillRect(SH.x2, G - wain, L2 - SH.x2, wain);
+  ctx.fillStyle = 'rgba(0,0,0,0.08)'; for (let x = SH.x2 + 20; x < L2; x += 40) ctx.fillRect(x, G - wain + 8, 2, wain - 16);
+  ctx.fillStyle = shade(P.lobby, -50); ctx.fillRect(SH.x2, G - wain - 4, L2 - SH.x2, 4);
+  // grindys
+  ctx.fillStyle = P.lobbyTile; ctx.fillRect(SH.x2, G - 8, L2 - SH.x2, 8);
+  ctx.fillStyle = shade(P.lobbyTile, -18); for (let x = SH.x2; x < L2; x += 32) ctx.fillRect(x, G - 8, 16, 8);
+  // arka tarp laukiamojo ir registratūros
+  ctx.fillStyle = P.wall; ctx.fillRect(tx2 - 7, ceil, 14, 18);
+  ctx.strokeStyle = P.wall; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(tx2, ceil + 46, 32, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+  // užrašai
+  signBoard((SH.x2 + tx2) / 2, ceil + 14, 'LAUKIAMASIS');
+  signBoard(GEO.desk.x + 6, ceil + 14, 'REGISTRATŪRA');
+
+  /* ===== LAUKIAMASIS (2 piešinys) ===== */
+  const gold = S.levels.traffic >= 1;
+  // ilgas kilimas ant grindų
+  ctx.fillStyle = gold ? '#9b1c2e' : '#b03a48'; rr(SH.x2 + 18, G - 9, tx2 - SH.x2 - 40, 9, 3); ctx.fill();
+  ctx.fillStyle = gold ? '#f5c542' : '#e8a3ad'; ctx.fillRect(SH.x2 + 22, G - 7, tx2 - SH.x2 - 48, 2);
+  ctx.fillStyle = '#f3ead2'; for (let k = 0; k < 4; k++) { ctx.fillRect(SH.x2 + 13, G - 8 + k * 2, 5, 1); ctx.fillRect(tx2 - 22, G - 8 + k * 2, 5, 1); }
+  // kabančios lempos
+  hangingLamp(196, ceil, 30); hangingLamp(292, ceil, 20); hangingLamp(478, ceil, 28);
+  if (S.levels.traffic >= 2) hangingLamp(392, ceil, 16, true);
+  // ant sienos: paveikslas, laikrodis, taurių stendas, apvalios lėkštės
+  picture(236, ceil + 26, 38, 34, 'landscape');
+  wallClock(336, ceil + 46, 16);
+  trophyBoard(440, ceil + 22);
+  roundPlate(522, ceil + 30, 15, 'person');
+  roundPlate(522, ceil + 68, 13, 'cat');
+  // baldai: vazonas, kėdė, staliukas, pupelės krėslas, vazonas
+  spikyPlant(168, G, 1.05);
+  armchair(210, G);
+  stool(268, G);
+  beanChair(312, G);
+  if (S.levels.comfort >= 1) coffeeMachine(372, G);
+  spikyPlant(408, G, 0.95);
+  if (S.levels.comfort >= 2) cafeTable(500, G);
+
+  /* ===== REGISTRATŪRA (1 piešinys) ===== */
+  spikyPlant(598, G, 1.25);
+  wallClock(660, ceil + 32, 18);
+  picture(892, ceil + 22, 52, 40, 'landscape');
+  picture(958, ceil + 12, 34, 42, 'portrait');
+  picture(1004, ceil + 24, 38, 34, 'flowers');
+  if (S.levels.traffic >= 2) chandelier(760, ceil);
+  sofa(890, G);
+  ctx.fillStyle = shade(P.wall, 10); rr(966, G - 34, 22, 34, 3); ctx.fill(); // postamentas
+  spikyPlant(977, G - 34, 0.7);
+  luggageCart(1012, G);
+  ctx.fillStyle = 'rgba(120,70,40,0.35)'; ctx.beginPath(); ctx.ellipse(1066, G - 3, 18, 4, 0, 0, 7); ctx.fill(); // kilimėlis prie durų
+  // dvigubos durys su apvaliomis rankenomis
+  const dx = L2 - 64;
+  ctx.fillStyle = shade(P.wall, 20); rr(dx - 4, G - 108, 68, 108, 4); ctx.fill();
+  ctx.fillStyle = '#d9b38c'; ctx.fillRect(dx, G - 104, 29, 104); ctx.fillRect(dx + 31, G - 104, 29, 104);
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5; ctx.strokeRect(dx + 4, G - 98, 21, 40); ctx.strokeRect(dx + 35, G - 98, 21, 40);
+  ctx.fillStyle = '#c9a14a'; ctx.beginPath(); ctx.arc(dx + 23, G - 52, 4, 0, 7); ctx.arc(dx + 37, G - 52, 4, 0, 7); ctx.fill();
+  text('ĮĖJIMAS', L2 + 52, G - 92, { size: 13, color: '#fff', stroke: '#0009', lw: 4 });
+}
+function signBoard(x, y, label) {
+  ctx.font = 'bold 10px "Trebuchet MS", sans-serif';
+  const w = ctx.measureText(label).width + 16;
+  ctx.fillStyle = '#2b1d3a'; rr(x - w / 2, y - 8, w, 16, 4); ctx.fill();
+  text(label, x, y, { size: 10, color: '#f5c542' });
+}
+function hangingLamp(x, ceil, len, big) {
+  ctx.strokeStyle = '#3b2a1a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, ceil); ctx.lineTo(x, ceil + len); ctx.stroke();
+  const r = big ? 16 : 11, y = ceil + len;
+  const glow = ctx.createRadialGradient(x, y + r * 0.6, 2, x, y + r * 0.6, r * 3.2);
+  glow.addColorStop(0, 'rgba(255,236,160,0.55)'); glow.addColorStop(1, 'rgba(255,236,160,0)');
+  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y + r * 0.6, r * 3.2, 0, 7); ctx.fill();
+  ctx.fillStyle = big ? '#f5c542' : '#5b3f2a'; ctx.beginPath(); ctx.arc(x, y + r, r, Math.PI, 0); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.ellipse(x, y + r + 4, r * 0.35, r * 0.45, 0, 0, 7); ctx.fill();
+}
+function chandelier(x, ceil) {
+  ctx.strokeStyle = '#c9a14a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, ceil); ctx.lineTo(x, ceil + 14); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x - 24, ceil + 18); ctx.quadraticCurveTo(x, ceil + 30, x + 24, ceil + 18); ctx.stroke();
+  for (const dx of [-24, -8, 8, 24]) { ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.arc(x + dx, ceil + 18 + (Math.abs(dx) < 10 ? 6 : 0), 3.5, 0, 7); ctx.fill(); }
+}
+function spikyPlant(x, ground, s) {
+  s = s || 1;
+  ctx.save(); ctx.translate(x, ground); ctx.scale(s, s);
+  // smailūs lapai (kaip piešinyje — zigzagu)
+  ctx.fillStyle = '#2e9e5b';
+  ctx.beginPath(); ctx.moveTo(-15, -30);
+  const pts = [[-14, -62], [-8, -42], [-4, -74], [1, -44], [6, -70], [9, -42], [15, -58]];
+  for (const [px, py] of pts) ctx.lineTo(px, py);
+  ctx.lineTo(15, -30); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#3cc36f'; ctx.beginPath(); ctx.moveTo(-8, -30); ctx.lineTo(-6, -54); ctx.lineTo(-1, -34); ctx.lineTo(4, -60); ctx.lineTo(7, -30); ctx.closePath(); ctx.fill();
+  // vazonas (apvalus apačioje)
+  ctx.fillStyle = '#c0703f'; ctx.beginPath(); ctx.moveTo(-16, -32); ctx.lineTo(16, -32); ctx.lineTo(14, -8); ctx.quadraticCurveTo(0, 4, -14, -8); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#a65a2e'; ctx.fillRect(-17, -34, 34, 6);
+  ctx.restore();
+}
+function picture(x, y, w, h, kind) {
+  ctx.fillStyle = '#7a4a22'; ctx.fillRect(x - 3, y - 3, w + 6, h + 6);
+  ctx.fillStyle = kind === 'portrait' ? '#f3ead2' : '#cfe8ff'; ctx.fillRect(x, y, w, h);
+  if (kind === 'landscape') {
+    ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(x + w * 0.72, y + h * 0.3, h * 0.13, 0, 7); ctx.fill();
+    ctx.fillStyle = '#6ab04c'; ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x + w * 0.3, y + h * 0.45); ctx.lineTo(x + w * 0.5, y + h * 0.75); ctx.lineTo(x + w * 0.72, y + h * 0.5); ctx.lineTo(x + w, y + h * 0.85); ctx.lineTo(x + w, y + h); ctx.closePath(); ctx.fill();
+  } else if (kind === 'flowers') {
+    ctx.strokeStyle = '#2e9e5b'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x + w * 0.35, y + h); ctx.lineTo(x + w * 0.35, y + h * 0.4); ctx.moveTo(x + w * 0.65, y + h); ctx.lineTo(x + w * 0.65, y + h * 0.5); ctx.stroke();
+    for (const [fx, fy, c] of [[0.35, 0.36, '#e84393'], [0.65, 0.46, '#fd79a8']]) {
+      ctx.fillStyle = c; for (let k = 0; k < 5; k++) { const a = k * 1.256; ctx.beginPath(); ctx.arc(x + w * fx + Math.cos(a) * 4, y + h * fy + Math.sin(a) * 4, 3, 0, 7); ctx.fill(); }
+      ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(x + w * fx, y + h * fy, 2.2, 0, 7); ctx.fill();
+    }
+  } else if (kind === 'portrait') { // savininko portretas su cilindru
+    ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.translate(x + w / 2, y + h * 0.72); ctx.scale(0.62, 0.62);
+    drawPerson(0, 0, { shirt: '#f5c542', skin: '#ffdbac', hat: 'tophat', hatColor: '#1e1e1e', face: 'happy', role: 'player' });
+    ctx.restore();
+  }
+}
+function wallClock(x, y, r) {
+  ctx.fillStyle = '#fff'; ctx.strokeStyle = '#5b3f2a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 1.2;
+  for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r * 0.78, y + Math.sin(a) * r * 0.78); ctx.lineTo(x + Math.cos(a) * r * 0.92, y + Math.sin(a) * r * 0.92); ctx.stroke(); }
+  const m = S.time / 10 * Math.PI * 2, h = m / 12; // laikrodis eina (10 s = valanda)
+  ctx.strokeStyle = '#222'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.sin(h) * r * 0.5, y - Math.cos(h) * r * 0.5); ctx.stroke();
+  ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.sin(m) * r * 0.78, y - Math.cos(m) * r * 0.78); ctx.stroke();
+}
+function trophyBoard(x, y) { // stendas su taure ir surinktų taurių skaičiumi
+  ctx.fillStyle = '#2b1d3a'; rr(x - 22, y, 44, 60, 4); ctx.fill();
+  ctx.strokeStyle = '#c9a14a'; ctx.lineWidth = 2; rr(x - 22, y, 44, 60, 4); ctx.stroke();
+  ctx.fillStyle = '#f5c542'; ctx.fillRect(x - 12, y + 10, 24, 5);
+  ctx.beginPath(); ctx.moveTo(x - 10, y + 15); ctx.lineTo(x + 10, y + 15); ctx.quadraticCurveTo(x + 8, y + 30, x, y + 31); ctx.quadraticCurveTo(x - 8, y + 30, x - 10, y + 15); ctx.fill();
+  ctx.fillRect(x - 2, y + 31, 4, 8); ctx.fillRect(x - 10, y + 39, 20, 5);
+  text('×' + S.trophies.length, x, y + 52, { size: 10, color: '#ffe066' });
+}
+function roundPlate(x, y, r, kind) {
+  ctx.fillStyle = '#f3ead2'; ctx.strokeStyle = '#7a4a22'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#5b3f2a'; ctx.lineWidth = 1.5; ctx.fillStyle = '#5b3f2a';
+  if (kind === 'person') {
+    ctx.beginPath(); ctx.arc(x, y - r * 0.25, r * 0.3, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y + r * 0.6, r * 0.45, Math.PI, 0); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y - r * 0.18, r * 0.14, 0.2, Math.PI - 0.2); ctx.stroke();
+  } else { // katinas (piešinyje „M“ formos ausys)
+    ctx.beginPath(); ctx.moveTo(x - r * 0.55, y + r * 0.45); ctx.lineTo(x - r * 0.5, y - r * 0.5); ctx.lineTo(x - r * 0.15, y - r * 0.1); ctx.lineTo(x + r * 0.15, y - r * 0.1); ctx.lineTo(x + r * 0.5, y - r * 0.5); ctx.lineTo(x + r * 0.55, y + r * 0.45); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x - r * 0.2, y + r * 0.12, 1.4, 0, 7); ctx.arc(x + r * 0.2, y + r * 0.12, 1.4, 0, 7); ctx.fill();
+  }
+}
+function armchair(x, ground) { // L formos kėdė
+  ctx.fillStyle = '#c0392b'; rr(x - 22, ground - 58, 14, 58, 6); ctx.fill(); rr(x - 22, ground - 26, 44, 20, 6); ctx.fill();
+  ctx.fillStyle = '#a32d22'; ctx.fillRect(x - 18, ground - 6, 5, 6); ctx.fillRect(x + 14, ground - 6, 5, 6);
+}
+function stool(x, ground) {
+  ctx.fillStyle = '#7a4a22'; ctx.beginPath(); ctx.ellipse(x, ground - 28, 13, 4, 0, 0, 7); ctx.fill();
+  ctx.fillRect(x - 9, ground - 28, 3, 28); ctx.fillRect(x + 6, ground - 28, 3, 28);
+}
+function beanChair(x, ground) { // pupelės formos krėslas
+  ctx.fillStyle = '#8e44ad';
+  ctx.beginPath(); ctx.moveTo(x - 6, ground - 2);
+  ctx.bezierCurveTo(x - 30, ground - 2, x - 26, ground - 34, x - 10, ground - 30);
+  ctx.bezierCurveTo(x, ground - 28, x + 4, ground - 52, x + 18, ground - 46);
+  ctx.bezierCurveTo(x + 34, ground - 38, x + 26, ground - 2, x - 6, ground - 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.beginPath(); ctx.ellipse(x + 14, ground - 38, 5, 3, -0.5, 0, 7); ctx.fill();
+}
+function coffeeMachine(x, ground) {
+  ctx.fillStyle = '#7a4a22'; ctx.fillRect(x - 18, ground - 30, 36, 30);
+  ctx.fillStyle = '#636e72'; rr(x - 13, ground - 72, 26, 42, 4); ctx.fill();
+  ctx.fillStyle = '#2d3436'; ctx.fillRect(x - 8, ground - 52, 16, 14);
+  ctx.fillStyle = '#fff'; ctx.fillRect(x - 4, ground - 46, 8, 8);
+  ctx.fillStyle = '#e17055'; ctx.beginPath(); ctx.arc(x, ground - 64, 3, 0, 7); ctx.fill();
+}
+function cafeTable(x, ground) {
+  ctx.fillStyle = '#fff'; rr(x - 26, ground - 40, 52, 7, 3); ctx.fill(); ctx.fillStyle = '#d63031'; ctx.fillRect(x - 26, ground - 34, 52, 5);
+  ctx.fillStyle = '#5b3417'; ctx.fillRect(x - 2, ground - 30, 4, 30); ctx.fillRect(x - 12, ground - 3, 24, 3);
+  ctx.fillStyle = '#ffeaa7'; ctx.beginPath(); ctx.arc(x, ground - 45, 4, 0, 7); ctx.fill();
+}
+function sofa(x, ground) { // sofa (piešinyje — didelė dėžė su linija per vidurį)
+  const c = world().palette.corridorRug || '#9b3d3d';
+  ctx.fillStyle = shade(c, -10); rr(x, ground - 48, 72, 26, 6); ctx.fill();
+  ctx.fillStyle = c; rr(x - 4, ground - 26, 80, 20, 6); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(x + 35, ground - 46, 2, 38);
+  ctx.fillStyle = '#3b2a1a'; ctx.fillRect(x + 2, ground - 6, 5, 6); ctx.fillRect(x + 65, ground - 6, 5, 6);
+}
+function luggageCart(x, ground) { // bagažo vežimėlis su lagaminais
+  ctx.strokeStyle = '#c9a14a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 4, ground - 4); ctx.lineTo(x - 4, ground - 70); ctx.moveTo(x + 30, ground - 4); ctx.lineTo(x + 30, ground - 70);
+  ctx.moveTo(x - 4, ground - 70); ctx.quadraticCurveTo(x + 13, ground - 84, x + 30, ground - 70); ctx.stroke();
+  ctx.fillStyle = '#c9a14a'; ctx.fillRect(x - 8, ground - 8, 42, 4);
+  ctx.fillStyle = '#2d3436'; ctx.beginPath(); ctx.arc(x - 2, ground - 2, 3, 0, 7); ctx.arc(x + 28, ground - 2, 3, 0, 7); ctx.fill();
+  ctx.fillStyle = '#e17055'; rr(x, ground - 30, 26, 22, 3); ctx.fill();
+  ctx.fillStyle = '#0984e3'; rr(x + 2, ground - 48, 22, 18, 3); ctx.fill();
+  ctx.fillStyle = '#6c5ce7'; rr(x + 5, ground - 60, 16, 12, 3); ctx.fill();
 }
 function drawDesk() {
   const D = GEO.desk, dy = G - D.h, scanLv = S.levels.scanner;
-  // rentgeno vartai prie svečio vietos
-  if (scanLv >= 2) {
+  if (scanLv >= 2) { // rentgeno vartai prie svečio vietos
     const gx = GEO.front.x, glow = S.scan ? 0.5 + 0.35 * Math.sin(S.time * 20) : 0.22;
     ctx.fillStyle = 'rgba(116,185,255,' + glow + ')'; ctx.fillRect(gx - 22, G - 92, 44, 92);
     ctx.fillStyle = '#4a69bd'; ctx.fillRect(gx - 28, G - 96, 7, 96); ctx.fillRect(gx + 21, G - 96, 7, 96); ctx.fillRect(gx - 28, G - 102, 56, 8);
     text('RENTGENAS', gx, G - 110, { size: 10, color: '#dfe9ff', stroke: '#1e2a55', lw: 3 });
   }
-  // stalas
+  // stalas su žvaigždės ženklu
   ctx.fillStyle = '#7b4a24'; rr(D.x, dy, D.w, D.h, 4); ctx.fill();
-  ctx.fillStyle = '#a0632f'; rr(D.x + 5, dy + 8, D.w - 10, D.h - 14, 3); ctx.fill();
+  ctx.fillStyle = '#a0632f'; rr(D.x + 5, dy + 7, D.w - 10, D.h - 12, 3); ctx.fill();
   ctx.fillStyle = '#5b3417'; ctx.fillRect(D.x - 6, dy - 5, D.w + 12, 7);
-  ctx.fillStyle = '#f5c542'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('REGISTRATŪRA', D.x + D.w / 2, dy + 22);
-  // skeneris
-  ctx.fillStyle = scanLv >= 2 ? '#74b9ff' : scanLv >= 1 ? '#55efc4' : '#95a5a6'; rr(D.x + 4, dy - 24, 22, 19, 3); ctx.fill();
-  ctx.fillStyle = S.scan ? ((Math.floor(S.time * 10) % 2) ? '#ff7675' : '#ffeaa7') : '#2d3436'; ctx.fillRect(D.x + 8, dy - 20, 14, 8);
-  if (scanLv >= 1) {
-    ctx.strokeStyle = '#2d3436'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(D.x + 22, dy - 24); ctx.lineTo(D.x + 28, dy - 38); ctx.stroke();
-    ctx.fillStyle = (Math.floor(S.time * 3) % 2) ? '#55efc4' : '#00b894'; ctx.beginPath(); ctx.arc(D.x + 28, dy - 39, 3, 0, 7); ctx.fill();
-  }
-  // skambutis ir laikraštis
-  ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(D.x + 44, dy - 5, 6, Math.PI, 0); ctx.fill(); ctx.fillRect(D.x + 37, dy - 6, 14, 2);
-  ctx.fillStyle = '#f3ead2'; ctx.save(); ctx.translate(D.x + 34, dy - 8); ctx.rotate(-0.15); ctx.fillRect(-6, -3, 14, 4); ctx.restore();
-  // vieta už stalo, kai laukia svečias
+  const sx = D.x + D.w / 2, sy = dy + 24;
+  ctx.fillStyle = '#f5c542'; ctx.strokeStyle = '#8a5a00'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(sx, sy, 11, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#8a5a00'; ctx.beginPath();
+  for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rad = k % 2 ? 3.2 : 7.5; ctx.lineTo(sx + Math.cos(a) * rad, sy + Math.sin(a) * rad); }
+  ctx.closePath(); ctx.fill();
+  // klaviatūra (langeliai) ant stalo
+  ctx.fillStyle = '#dfe6e9'; ctx.beginPath(); ctx.moveTo(D.x + 30, dy - 4); ctx.lineTo(D.x + 54, dy - 4); ctx.lineTo(D.x + 50, dy - 10); ctx.lineTo(D.x + 33, dy - 10); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#636e72'; ctx.lineWidth = 0.8; ctx.beginPath();
+  for (let k = 1; k < 5; k++) { ctx.moveTo(D.x + 31 + k * 4.4, dy - 4); ctx.lineTo(D.x + 33 + k * 3.6, dy - 10); }
+  ctx.moveTo(D.x + 32, dy - 7); ctx.lineTo(D.x + 52, dy - 7); ctx.stroke();
+  // monitorius-skeneris su antena
+  ctx.fillStyle = '#2d3436'; ctx.fillRect(D.x + 13, dy - 10, 6, 6);
+  ctx.fillStyle = scanLv >= 2 ? '#74b9ff' : scanLv >= 1 ? '#55efc4' : '#95a5a6'; rr(D.x + 2, dy - 34, 28, 24, 3); ctx.fill();
+  ctx.fillStyle = S.scan ? ((Math.floor(S.time * 10) % 2) ? '#ff7675' : '#ffeaa7') : '#2d3436'; ctx.fillRect(D.x + 6, dy - 30, 20, 15);
+  ctx.strokeStyle = '#2d3436'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(D.x + 16, dy - 34); ctx.lineTo(D.x + 16, dy - 46); ctx.stroke();
+  ctx.fillStyle = scanLv >= 1 ? ((Math.floor(S.time * 3) % 2) ? '#55efc4' : '#00b894') : '#7f8c8d'; ctx.beginPath(); ctx.arc(D.x + 16, dy - 48, 3.5, 0, 7); ctx.fill();
   if (deskGuest() && !atDesk() && S.mode === 'play') {
     ctx.strokeStyle = 'rgba(255,230,100,' + (0.5 + 0.4 * Math.sin(S.time * 6)) + ')'; ctx.setLineDash([6, 5]); ctx.lineWidth = 2.5;
     rr(GEO.deskZone.x1, G - 76, GEO.deskZone.x2 - GEO.deskZone.x1, 74, 10); ctx.stroke(); ctx.setLineDash([]);
